@@ -1,0 +1,217 @@
+/* The Math Behind Music: side panel. Spotify palette, one accent, no glow. */
+:root, :root[data-theme="light"] {
+  --bg: #F4F4F4;
+  --surface: #FFFFFF;
+  --inset: #F4F4F4;
+  --text: #191414;
+  --muted: #535353;
+  --faint: #8A8A8A;
+  --line: rgba(25, 20, 20, .10);
+  --line-strong: rgba(25, 20, 20, .18);
+  --accent: #1AA34A;
+  --accent-hi: #12803A;
+  --accent-wash: rgba(29, 185, 84, .13);
+  --on-accent: #000000;
+  --danger: #E22134;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #121212;
+  --surface: #181818;
+  --inset: #121212;
+  --text: #FFFFFF;
+  --muted: #B3B3B3;
+  --faint: #7A7A7A;
+  --line: rgba(255, 255, 255, .09);
+  --line-strong: rgba(255, 255, 255, .17);
+  --accent: #1DB954;
+  --accent-hi: #1ED760;
+  --accent-wash: rgba(29, 185, 84, .15);
+  --on-accent: #000000;
+  --danger: #F15E6C;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  min-width: 300px;
+  background: var(--bg);
+  color: var(--text);
+  font: 500 14px/1.4 "Spotify Mix", "Circular Std", "Circular", "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+code, .mono { font-family: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 11.5px; color: var(--muted); }
+sup, sub { font-size: .7em; }
+button { font: inherit; cursor: pointer; }
+svg { display: block; }
+
+.top {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 9px; }
+.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: var(--accent); color: #000; }
+.brand-mark svg { width: 17px; height: 17px; }
+.brand-name { font-weight: 800; font-size: 16px; letter-spacing: -.02em; }
+
+.icon-btn {
+  display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: 1px solid var(--line-strong); border-radius: 999px; background: transparent; color: var(--text);
+}
+.icon-btn:hover { border-color: var(--text); }
+.icon-btn svg { width: 17px; height: 17px; }
+.icon-btn.small { width: 30px; height: 30px; }
+.icon-btn.small svg { width: 15px; height: 15px; }
+.ic-sun { display: none; }
+:root[data-theme="dark"] .ic-sun { display: block; }
+:root[data-theme="dark"] .ic-moon { display: none; }
+
+main { display: grid; gap: 10px; padding: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+h2 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -.02em; }
+
+/* Now playing */
+.np-row { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 12px; }
+.art { position: relative; width: 56px; height: 56px; border-radius: 8px; overflow: hidden; background: var(--inset); color: var(--faint); display: grid; place-items: center; }
+.art svg { width: 24px; height: 24px; }
+.art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.np-text { min-width: 0; }
+.np-title, .np-artist { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-title { font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
+.np-artist { font-size: 13px; color: var(--muted); }
+.status {
+  padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line-strong);
+  font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap;
+}
+.status[data-state="live"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.status[data-state="warn"] { border-color: var(--danger); color: var(--danger); }
+
+.progress { margin-top: 14px; height: 4px; border-radius: 999px; background: var(--line-strong); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0%; background: var(--text); border-radius: 999px; }
+.times { display: flex; justify-content: space-between; margin-top: 5px; font: 11px "Geist Mono", ui-monospace, monospace; color: var(--faint); }
+
+.connect-row { display: flex; gap: 8px; margin-top: 12px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid transparent;
+  font-weight: 800; font-size: 14px; letter-spacing: -.005em;
+}
+.btn svg { width: 17px; height: 17px; }
+.btn-primary { flex: 1; background: var(--accent); color: var(--on-accent); }
+.btn-primary:hover { background: var(--accent-hi); transform: scale(1.02); }
+.btn-primary[data-connected="true"] { background: transparent; color: var(--text); border-color: var(--line-strong); }
+.btn-primary[data-connected="true"]:hover { border-color: var(--text); transform: none; }
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--line-strong); }
+.btn-ghost:hover { border-color: var(--text); }
+.hint { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+.hint b { color: var(--text); }
+
+/* Number tiles */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
+.tile header { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; font-weight: 700; }
+.tile header svg { width: 16px; height: 16px; color: var(--faint); }
+.big { margin: 6px 0 4px; font-size: 30px; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.big small { margin-left: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--faint); }
+#keyVal { font-size: 24px; }
+.tile code { display: block; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.conf { margin-top: 8px; height: 3px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.conf i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width .4s ease; }
+.pulse { display: flex; gap: 6px; margin-top: 8px; }
+.pulse i { width: 14px; height: 14px; border-radius: 999px; background: var(--line-strong); transition: background .06s linear; }
+.pulse i.on { background: var(--accent); }
+.pulse i.down.on { background: var(--text); }
+
+/* Spectrum */
+canvas { display: block; width: 100%; height: 120px; border-radius: 8px; background: var(--inset); }
+.foot { display: block; margin-top: 8px; }
+
+/* Live note */
+.note { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 16px; }
+.note-big { min-width: 78px; font-size: 52px; font-weight: 900; letter-spacing: -.05em; line-height: 1; }
+.note-big sup { font-size: 18px; color: var(--accent); margin-left: 2px; letter-spacing: 0; }
+.note-math { display: grid; gap: 5px; }
+.note-math p { margin: 0; display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.note-math p:last-child { border-bottom: 0; }
+.lbl { font-size: 12px; font-weight: 700; color: var(--faint); }
+.note-math code { color: var(--text); }
+
+/* Session */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+.stats p { margin: 0; padding: 8px 6px; border-radius: 10px; background: var(--inset); text-align: center; min-width: 0; }
+.stats span { display: block; font-size: 10.5px; font-weight: 700; color: var(--faint); }
+.stats strong { display: block; font-size: 15px; font-weight: 800; white-space: nowrap; }
+.tracks { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.tracks li { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; padding: 6px; border-radius: 8px; }
+.tracks li:hover { background: var(--inset); }
+.tracks img, .tracks .ph { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; background: var(--inset); }
+.tracks .t { min-width: 0; }
+.tracks .t b, .tracks .t span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tracks .t b { font-size: 13px; font-weight: 700; }
+.tracks .t span { font-size: 12px; color: var(--muted); }
+.tracks .n { text-align: right; font: 11px/1.35 "Geist Mono", ui-monospace, monospace; color: var(--muted); }
+.tracks .n strong { display: block; color: var(--text); font-size: 12px; }
+.empty { margin: 4px 0 0; font-size: 12.5px; color: var(--faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+
+/* ===== Audio-driven motion (only moves when sound is playing) ===== */
+.art-eq { position: absolute; inset: auto 0 0 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; padding: 0 8px 7px;
+  background: rgba(0,0,0,.45); opacity: 0; transition: opacity .25s; }
+.art.is-live .art-eq { opacity: 1; }
+.art-eq i { width: 4px; height: 100%; border-radius: 2px; background: #1ED760; transform-origin: bottom; transform: scaleY(.12); transition: transform 60ms linear; }
+.level { position: relative; margin-top: 10px; height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.level i { position: absolute; inset: 0 auto 0 0; width: 0%; background: var(--accent); border-radius: 999px; transition: width 50ms linear; }
+.level b { position: absolute; top: 0; bottom: 0; width: 2px; left: 0%; background: var(--text); opacity: .55; }
+.scope { height: 64px; margin-top: 8px; }
+.big { transform-origin: left center; transition: transform 90ms ease-out, color 90ms ease-out; }
+.big.bump { transform: scale(1.07); color: var(--accent); }
+.brand-mark { transition: transform 90ms ease-out; }
+.brand-mark.bump { transform: scale(1.12); }
+.pulse i { transition: background 60ms linear, transform 90ms ease-out; }
+.pulse i.on { transform: scale(1.15); }
+@media (prefers-reduced-motion: reduce) { .big.bump, .brand-mark.bump, .pulse i.on { transform: none; } }
+.hint small { display: block; margin-top: 4px; font: 11px "Geist Mono", ui-monospace, monospace; color: var(--faint); }
+
+/* ===== Sipra additions ===== */
+.top-actions { display: flex; gap: 8px; }
+.head-right { display: flex; align-items: center; gap: 8px; }
+.learn {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px;
+  border: 1px solid var(--line-strong); border-radius: 999px; background: transparent;
+  color: var(--text); font-size: 11.5px; font-weight: 800; letter-spacing: .01em;
+}
+.learn::before {
+  content: ""; width: 12px; height: 12px; background: currentColor;
+  -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg>') center / contain no-repeat;
+          mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg>') center / contain no-repeat;
+}
+.learn:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.learn.sm { height: 22px; padding: 0 8px; font-size: 10.5px; }
+.learn.sm::before { width: 10px; height: 10px; }
+
+/* Chord card */
+.chord-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.chord-name { margin: 0; font-size: 46px; font-weight: 900; letter-spacing: -.05em; line-height: 1; transition: color .12s; }
+.chord-name.changed { color: var(--accent); }
+.chord-side { display: grid; justify-items: end; gap: 6px; }
+.roman { padding: 4px 10px; border-radius: 999px; background: var(--accent-wash); color: var(--accent-hi); font-weight: 900; font-size: 14px; }
+:root[data-theme="light"] .roman { color: var(--accent-hi); }
+.chord-math { display: block; margin-top: 8px; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.chord-line { list-style: none; display: flex; gap: 5px; margin: 12px 0 0; padding: 0; overflow: hidden; }
+.chord-line li { flex: 0 0 auto; padding: 5px 9px; border-radius: 8px; background: var(--inset); font-size: 12px; font-weight: 800; color: var(--muted); }
+.chord-line li span { display: block; font: 10px "Geist Mono", ui-monospace, monospace; color: var(--faint); font-weight: 400; }
+.chord-line li.now { background: var(--accent); color: var(--on-accent); }
+.chord-line li.now span { color: rgba(0, 0, 0, .65); }
+
+.tile header .learn { margin-left: auto; }
+.tile .alt { margin-top: 2px; color: var(--faint); }
+.note { position: relative; }
+.note-learn { position: absolute; top: 12px; right: 12px; }
+.note .note-math { margin-top: 26px; }

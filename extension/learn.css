@@ -1,0 +1,103 @@
+/* Sipra lessons. Uses the host page's theme tokens (--text, --accent, …). */
+.sipra-learn { --l-inset: var(--inset, var(--surface-inset, #F4F4F4)); --l-surface: var(--surface, #fff); color: var(--text); }
+.sipra-learn .learn-top { position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 12px 0 10px; border-bottom: 1px solid var(--line); }
+.sipra-learn .now-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.sipra-learn .now-strip b { color: var(--text); }
+.sipra-learn .now-strip .vals { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--text); margin-left: auto; }
+.sipra-learn .toc { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+.sipra-learn .toc::-webkit-scrollbar { display: none; }
+.sipra-learn .toc a {
+  flex: 0 0 auto; display: inline-flex; gap: 6px; align-items: baseline; padding: 7px 12px; border-radius: 999px;
+  border: 1px solid var(--line-strong); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 700;
+}
+.sipra-learn .toc a span { font-family: "Geist Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--faint); font-weight: 400; }
+.sipra-learn .toc a:hover, .sipra-learn .toc a.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #000); }
+.sipra-learn .toc a:hover span, .sipra-learn .toc a.on span { color: inherit; }
+
+.sipra-learn .tag { display: inline-block; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 11px; font-weight: 800; color: var(--muted); margin-right: 4px; }
+.sipra-learn .tag.live { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #000); }
+
+.sipra-learn .lessons { display: grid; gap: 18px; padding: 18px 0 60px; }
+.sipra-learn .lesson { scroll-margin-top: 120px; background: var(--l-surface); border: 1px solid var(--line); border-radius: 18px; padding: clamp(18px, 3vw, 30px); }
+.sipra-learn .lesson-head { display: flex; gap: 14px; align-items: flex-start; }
+.sipra-learn .num { font-family: "Geist Mono", ui-monospace, monospace; font-size: 13px; color: var(--accent); padding-top: 9px; }
+.sipra-learn h2 { margin: 0; font-size: clamp(24px, 3.4vw, 34px); font-weight: 900; letter-spacing: -.035em; line-height: 1.1; }
+.sipra-learn .lead { margin: 6px 0 0; font-size: 16px; color: var(--muted); max-width: 70ch; }
+.sipra-learn .block { margin-top: 20px; }
+.sipra-learn h3 { margin: 0 0 8px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.sipra-learn p, .sipra-learn li { font-size: 15px; line-height: 1.6; max-width: 72ch; }
+.sipra-learn p { margin: 0 0 10px; }
+.sipra-learn ol, .sipra-learn ul { margin: 0; padding-left: 20px; }
+.sipra-learn code { font-family: "Geist Mono", ui-monospace, monospace; }
+.sipra-learn .formulas { list-style: none; padding: 0; display: grid; gap: 8px; }
+.sipra-learn .formulas li { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--l-inset); max-width: none; }
+.sipra-learn .formulas code { font-size: 15px; color: var(--text); }
+.sipra-learn .formulas span { font-size: 13px; color: var(--muted); }
+.sipra-learn table { width: 100%; max-width: 640px; margin-top: 12px; border-collapse: collapse; font-size: 13.5px; }
+.sipra-learn th, .sipra-learn td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+.sipra-learn th { font-size: 11.5px; color: var(--faint); font-weight: 800; }
+.sipra-learn .example { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line-strong); }
+.sipra-learn .example ol { margin-top: 8px; }
+.sipra-learn .small { font-size: 12.5px; color: var(--muted); }
+.sipra-learn .calc { padding: 14px 16px; border-radius: 12px; background: var(--l-inset); }
+.sipra-learn .calc label { display: inline-flex; align-items: center; gap: 8px; margin: 0 14px 10px 0; font-size: 14px; font-weight: 700; }
+.sipra-learn input, .sipra-learn select {
+  font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line-strong);
+  background: var(--l-surface); color: var(--text); width: 110px;
+}
+.sipra-learn input.wide { width: min(320px, 70vw); }
+.sipra-learn input[type="range"] { width: 180px; padding: 0; accent-color: var(--accent); }
+.sipra-learn select { width: auto; }
+.sipra-learn .calc p { margin: 4px 0 0; }
+.sipra-learn .why li { margin-bottom: 6px; }
+.sipra-learn .answer-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sipra-learn .answer-row input { width: 200px; }
+.sipra-learn .answer-row button {
+  font: inherit; font-size: 13px; font-weight: 800; padding: 0 14px; height: 36px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--text);
+}
+.sipra-learn .answer-row .check { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #000); }
+.sipra-learn .feedback { margin-top: 8px; font-weight: 700; min-height: 1.4em; }
+.sipra-learn .feedback.ok { color: var(--accent); }
+.sipra-learn .feedback.no { color: var(--danger, #E22134); }
+.sipra-learn .feedback.sol { color: var(--text); font-weight: 500; font-family: "Geist Mono", ui-monospace, monospace; font-size: 13.5px; }
+
+/* chroma bars inside the Chords lesson */
+.sipra-learn .chroma { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 90px; margin-top: 12px; align-items: end; max-width: 520px; }
+.sipra-learn .chroma span { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; font-size: 10.5px; color: var(--faint); }
+.sipra-learn .chroma span i { position: absolute; bottom: 16px; left: 0; right: 0; height: calc((100% - 16px) * var(--h) / 100); background: var(--line-strong); border-radius: 3px; }
+.sipra-learn .chroma span.in i { background: var(--accent); }
+.sipra-learn .chroma span.in { color: var(--text); font-weight: 800; }
+@media (max-width: 520px) {
+  .sipra-learn .now-strip .vals { margin-left: 0; width: 100%; }
+  .sipra-learn .lesson { scroll-margin-top: 140px; }
+}
+/* keep everything inside narrow screens */
+.sipra-learn .lessons { grid-template-columns: minmax(0, 1fr); }
+.sipra-learn .lesson, .sipra-learn .block { min-width: 0; }
+.sipra-learn p, .sipra-learn li, .sipra-learn code { overflow-wrap: anywhere; }
+.sipra-learn .formulas code { white-space: normal; }
+.sipra-learn table { display: block; overflow-x: auto; }
+.sipra-learn .learn-top { min-width: 0; }
+
+/* ===== compact lesson layout ===== */
+.sipra-learn .lesson-head { align-items: baseline; }
+.sipra-learn .num { padding-top: 0; }
+.sipra-learn .now-line { margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--accent); font-size: 16px; line-height: 1.5; max-width: none; }
+.sipra-learn .now-line .tag { vertical-align: 1px; }
+.sipra-learn .idea { margin: 14px 0 10px; font-size: 15.5px; color: var(--text); }
+.sipra-learn .formulas { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.sipra-learn .formulas li { padding: 8px 12px; }
+.sipra-learn .formulas code { font-size: 14px; }
+.sipra-learn .formulas span { font-size: 12px; }
+.sipra-learn .steps { display: grid; gap: 6px; padding-left: 22px; }
+.sipra-learn .steps li { font-family: "Geist Mono", ui-monospace, monospace; font-size: 13.5px; line-height: 1.55; max-width: none; }
+.sipra-learn .steps li::marker { color: var(--accent); font-weight: 800; }
+.sipra-learn .calc-in { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.sipra-learn .calc-out { margin: 2px 0 0; font-size: 14px; }
+.sipra-learn .why { margin: 16px 0 0; font-size: 13.5px; color: var(--muted); }
+.sipra-learn .why b { color: var(--text); }
+.sipra-learn .practice .q { font-weight: 700; }
+.sipra-learn table { margin-top: 10px; }
+.sipra-learn .lesson { padding: clamp(16px, 2.6vw, 26px); }
+.sipra-learn .lessons { gap: 14px; }

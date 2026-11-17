@@ -1,0 +1,40 @@
+# Sipra: the math behind music
+
+Sipra listens to the music you're playing and shows its math live: tempo, key, chords, meter, pitch, spectrum and statistics. Every number has a **Learn** button with a full lesson worked out with your song.
+
+## Live listening (Spotify)
+
+The **Live** section listens to music that's playing on your computer and works out its tempo, key, meter and loudest note as it goes.
+
+- **Listen to Spotify:** pick your Spotify tab (or your whole screen) in the share window and switch on **Share tab audio** / **Share system audio**.
+  - Spotify in the browser: share the Spotify **tab**.
+  - Spotify desktop app on Windows or ChromeOS: share **Entire screen** with system audio on.
+  - Spotify desktop app on a Mac (Chrome 141 or newer, recent macOS): share the **Spotify window** with audio on. On older Macs, use **Mic**.
+- **Mic:** listens through your microphone, so it works with any speaker, including your phone.
+
+### Song name, cover and exact time (optional)
+
+Tap **Link Spotify account** in the Live section and follow the steps there. Sipra then reads what's playing from *any* Spotify app (desktop, phone, web) and resets its analysis exactly when the song changes. This needs:
+- a free Spotify developer app (developer.spotify.com/dashboard) with this site's address as its Redirect URI,
+- your Spotify account added under User Management,
+- Spotify Premium (Spotify's rule for personal developer apps; up to 5 people).
+
+Spotify only accepts `https://` addresses, or `http://127.0.0.1` for testing on your computer (not `localhost`).
+
+Live listening needs the site to be opened from its own address, such as GitHub Pages or `http://localhost`. It can't hear audio inside a preview frame like a claude.ai link.
+
+## Run it on GitHub Pages
+
+1. Push these files to a GitHub repository.
+2. Go to **Settings → Pages**, choose **Deploy from a branch**, pick `main` and `/ (root)`, then click **Save**.
+3. Open the address GitHub shows, for example `https://<your-name>.github.io/<repo>/`.
+
+## Run it on your computer
+
+In this folder, run `python3 -m http.server 8000`, then open http://127.0.0.1:8000.
+
+All audio processing happens in your browser. Nothing is uploaded.
+
+## Chrome / Opera extension
+
+The `extension/` folder is the Sipra browser extension. It sits beside Spotify Web Player and shows the same live math. To install it, open `chrome://extensions` or `opera://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the `extension` folder. Full steps are in [extension/README.md](extension/README.md).

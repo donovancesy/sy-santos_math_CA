@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "Sipra",
+  "short_name": "Sipra",
+  "version": "2.0.0",
+  "description": "Sipra shows the math of the song playing on Spotify Web Player: tempo, key, chords, pitch and spectrum, live, with lessons that teach how it's calculated.",
+  "minimum_chrome_version": "116",
+  "permissions": ["sidePanel", "tabCapture", "activeTab", "storage", "tabs", "scripting"],
+  "host_permissions": ["https://open.spotify.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Sipra",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Open Sipra"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://open.spotify.com/*"],
+      "js": ["content-main.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://open.spotify.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

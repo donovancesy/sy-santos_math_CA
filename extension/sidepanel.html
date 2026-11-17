@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sipra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="sidepanel.css">
+  <script src="theme-init.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h2l2-5 3 10 3-12 3 9 2-4h3"/></svg>
+      </span>
+      <span class="brand-name">Sipra</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" type="button" data-learn="" aria-label="Open all lessons" title="Lessons">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg>
+      </button>
+      <button class="icon-btn" id="themeToggle" type="button" aria-label="Switch theme" title="Light / dark">
+        <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+        <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card np" aria-label="Now playing">
+      <div class="np-row">
+        <div class="art" id="art">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
+          <img id="artImg" alt="" hidden>
+          <div class="art-eq" id="artEq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="np-text">
+          <p class="np-title" id="npTitle">Nothing playing</p>
+          <p class="np-artist" id="npArtist">Open Spotify Web Player</p>
+        </div>
+        <span class="status" id="status" data-state="off">Off</span>
+      </div>
+      <div class="progress" aria-hidden="true"><i id="progressFill"></i></div>
+      <div class="times"><span id="posText">0:00</span><span id="durText">0:00</span></div>
+      <div class="level" aria-hidden="true"><i id="levelFill"></i><b id="levelPeak"></b></div>
+      <div class="connect-row">
+        <button class="btn btn-primary" id="connectBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7H7a5 5 0 0 0 0 10h2M15 7h2a5 5 0 0 1 0 10h-2M8 12h8"/></svg>
+          <span id="connectLabel">Connect</span>
+        </button>
+        <button class="btn btn-ghost" id="openSpotifyBtn" type="button" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+          Open Spotify
+        </button>
+      </div>
+      <p class="hint" id="hint" hidden></p>
+    </section>
+
+    <!-- Chord -->
+    <section class="card chord-card" aria-label="Current chord">
+      <div class="card-head">
+        <h2>Chord</h2>
+        <button class="learn" type="button" data-learn="chords">Learn</button>
+      </div>
+      <div class="chord-main">
+        <p class="chord-name" id="chordName">—</p>
+        <div class="chord-side">
+          <span class="roman" id="chordRoman">—</span>
+          <code id="chordNotes">notes</code>
+        </div>
+      </div>
+      <code class="chord-math" id="chordMath">root + {0, 4, 7} semitones</code>
+      <ol class="chord-line" id="chordLine" aria-label="Recent chords"></ol>
+    </section>
+
+    <section class="grid" aria-label="Song math">
+      <article class="tile">
+        <header><span>Tempo</span><button class="learn sm" type="button" data-learn="tempo" aria-label="Learn tempo math">Learn</button></header>
+        <p class="big"><span id="bpmVal">—</span><small>BPM</small></p>
+        <code id="bpmMath">T = 60 / BPM</code>
+        <code class="alt" id="bpmAlt"></code>
+        <div class="conf" aria-hidden="true"><i id="bpmConf"></i></div>
+      </article>
+      <article class="tile">
+        <header><span>Key</span><button class="learn sm" type="button" data-learn="keys" aria-label="Learn key math">Learn</button></header>
+        <p class="big" id="keyVal">—</p>
+        <code id="keyMath">f = 440 · 2<sup>n/12</sup></code>
+        <div class="conf" aria-hidden="true"><i id="keyConf"></i></div>
+      </article>
+      <article class="tile">
+        <header><span>Meter</span><button class="learn sm" type="button" data-learn="meter" aria-label="Learn meter math">Learn</button></header>
+        <p class="big" id="meterVal">—</p>
+        <div class="pulse" id="pulse" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <code id="meterFeel"></code>
+      </article>
+      <article class="tile">
+        <header><span>Beats</span><button class="learn sm" type="button" data-learn="tempo" aria-label="Learn beat math">Learn</button></header>
+        <p class="big"><span id="beatNow">—</span><small id="beatTotal">/ —</small></p>
+        <code>N = D · BPM / 60</code>
+      </article>
+    </section>
+
+    <section class="card" aria-label="Live spectrum">
+      <div class="card-head">
+        <h2>Spectrum</h2>
+        <div class="head-right"><code id="peakText">peak — Hz</code><button class="learn" type="button" data-learn="spectrum">Learn</button></div>
+      </div>
+      <canvas id="spectrum" aria-label="Live frequency spectrum"></canvas>
+      <canvas id="scope" class="scope" aria-label="Live waveform"></canvas>
+    </section>
+
+    <section class="card note" aria-label="Loudest note right now">
+      <div class="note-big"><span id="noteName">—</span><sup id="noteOct"></sup></div>
+      <div class="note-math">
+        <p><span class="lbl">n</span><code id="noteN">—</code></p>
+        <p><span class="lbl">f</span><code id="noteF">— Hz</code></p>
+        <p><span class="lbl">cents</span><code id="noteCents">—</code></p>
+      </div>
+      <button class="learn note-learn" type="button" data-learn="pitch">Learn</button>
+    </section>
+
+    <section class="card" aria-label="Session statistics">
+      <div class="card-head">
+        <h2>Session</h2>
+        <div class="head-right">
+          <button class="learn" type="button" data-learn="stats">Learn</button>
+          <button class="icon-btn small" id="clearBtn" type="button" aria-label="Clear session" title="Clear">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="stats">
+        <p><span>x̄</span><strong id="sMean">—</strong></p>
+        <p><span>median</span><strong id="sMedian">—</strong></p>
+        <p><span>mode</span><strong id="sMode">—</strong></p>
+        <p><span>σ</span><strong id="sStd">—</strong></p>
+      </div>
+      <ol class="tracks" id="tracks"></ol>
+      <p class="empty" id="emptyTracks">Songs you play show up here.</p>
+    </section>
+  </main>
+
+  <script src="analysis.js"></script>
+  <script src="sipra-rhythm.js"></script>
+  <script src="sipra-engine.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
