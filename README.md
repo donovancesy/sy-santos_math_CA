@@ -1,10 +1,19 @@
 # Sipra: the math behind music
 
-Sipra listens to the music you're playing and shows its math live: tempo, key, chords, meter, pitch, spectrum and statistics. Every number has a **Learn** button with a full lesson worked out with your song.
+Sipra listens to the song playing on Spotify (desktop app or web player) and shows its math live: tempo, key, chords, a bar-by-bar chord chart, meter, spectrum and statistics. Every number has a **Learn** button with a full lesson worked out with your song.
+
+## Two pages
+
+- **`index.html`: Live.** Everything is about the song that's playing: listen to Spotify, the current chord, the chord chart, tempo, key, meter, spectrum, then **The math in this song** (periodicity, equal temperament, ratios in chords, bars & remainders, Fourier analysis, statistics), each worked out with your song's numbers. **Stats** keeps the songs you listened to (in this browser).
+- **`math.html`: Math map.** The concepts behind every number (periodicity, geometric sequences, ratios, Fourier, LCM & modular arithmetic, logarithms, statistics, optimization), each linked to a lesson and a lab: the **Signal lab** (add an MP3/WAV/M4A or use the demo, tap a tempo, FFT and beat views), the **Pitch lab** (keyboard and the `f = 440 · 2^(n/12)` graph) and the **Rhythm lab** (polyrhythms and LCM). Lessons there use the last song you listened to.
+
+Both pages share `js/app.js`; each runs only the parts whose elements it has (`<body data-page="live">` / `data-page="math"`).
 
 ## Chord chart
 
 While a song plays, Sipra writes out its chords **bar by bar** (`| Am | F | C | G |`), finds the **loop** that repeats (vi – IV – I – V), and notes whether the tempo is steady, the song's tuning (A4 = 440 Hz or not), any key change, and how many chord changes per minute. Tap **I–V** to switch to Roman numerals, or **Copy** to paste the chart as text. Bars with two chords show both (`Dm7 G`).
+
+Once a bar is a few seconds old it's **frozen**: written into the chart for good, so earlier chords can't all flip to one chord later. Only the newest bars are still being worked out.
 
 ## Live listening (Spotify)
 
@@ -43,4 +52,4 @@ All audio processing happens in your browser. Nothing is uploaded.
 
 ## Chrome / Opera extension
 
-The `extension/` folder is the Sipra browser extension. It sits beside Spotify Web Player and shows the same live math. To install it, open `chrome://extensions` or `opera://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the `extension` folder. Full steps are in [extension/README.md](extension/README.md).
+The `extension/` folder is the Sipra browser extension. It sits beside Spotify Web Player and shows the same live math. Its **Math map** button opens `math.html` on GitHub Pages, with the current song's tempo and key passed in the link's `#` part (which never leaves your browser). To install it, open `chrome://extensions` or `opera://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the `extension` folder. Full steps are in [extension/README.md](extension/README.md).

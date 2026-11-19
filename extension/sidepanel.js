@@ -59,6 +59,22 @@
     try { localStorage.setItem("sipra-theme", next); } catch (e) {}
     readColors();
   });
+  // Math map: the concept map and labs on the Sipra website. The song's numbers
+  // go in the #fragment, which stays in the browser (never sent to the server).
+  const MATH_MAP_URL = "https://donovancesy.github.io/sy-santos_math_CA/math.html";
+  document.addEventListener("click", (event) => {
+    const btn = event.target.closest && event.target.closest("[data-open-map]");
+    if (!btn) return;
+    const r = state.result && state.result.ready ? state.result : null;
+    let url = MATH_MAP_URL;
+    if (r) {
+      const k = r.keyNow || r.key;
+      const p = new URLSearchParams({ bpm: String(r.bpm), tonic: String(k.tonicPc), mode: k.mode, meter: r.meterReady ? r.meter : "" });
+      if (state.np && state.np.title) p.set("title", state.np.title);
+      url += "#song&" + p.toString();
+    }
+    chrome.tabs.create({ url });
+  });
   document.addEventListener("click", (event) => {
     const btn = event.target.closest && event.target.closest("[data-learn]");
     if (!btn) return;

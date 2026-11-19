@@ -13,7 +13,7 @@
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
-  <meta name="description" content="An interactive Math 10 audio lab that estimates tempo, key, and meter, and visualizes periodicity, equal temperament, Fourier analysis, polyrhythms, and statistics.">
+  <meta name="description" content="Play a song on Spotify and see the math behind it live: tempo, key, chords and a bar-by-bar chord chart, with lessons on periodicity, equal temperament, ratios, Fourier analysis and statistics.">
   <title>Sipra · The math behind music</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +27,7 @@
   <link rel="stylesheet" href="css/learn.css">
 </head>
 
-<body>
+<body data-page="live">
   <header class="site-header">
     <div class="wrap nav">
       <a class="brand" href="#top" aria-label="Sipra, back to top">
@@ -44,18 +44,11 @@
       </a>
       <nav class="nav-links" aria-label="Main sections">
         <a href="#live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>Live</a>
-        <a href="#deck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h2l2-5 3 10 3-12 3 9 2-4h3"/></svg>Signal</a>
-        <a href="#pitch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>Pitch</a>
-        <a href="#rhythm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="8" r="1.6"/><circle cx="12" cy="8" r="1.6"/><circle cx="19" cy="8" r="1.6"/><circle cx="5" cy="16" r="1.6"/><circle cx="10" cy="16" r="1.6"/><circle cx="14.5" cy="16" r="1.6"/><circle cx="19" cy="16" r="1.6"/></svg>Rhythm</a>
+        <a href="#math"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h6M8 4v6M14 6l5 5M19 6l-5 5M5 17h6M14 15h5M14 19h5"/></svg>The math</a>
         <a href="#session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>Stats</a>
-        <a href="#learn" data-learn=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg>Learn</a>
+        <a href="math.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>Math map</a>
       </nav>
-      <button class="btn btn-quiet concept-trigger" type="button" data-open-concepts aria-haspopup="dialog" aria-label="Open the Math 10 concept map" title="Math 10 concept map">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/>
-        </svg>
-        <span>Math map</span>
-      </button>
+      <a class="btn btn-quiet concept-trigger" href="math.html" title="Math map: labs and lessons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span>Math map</span></a>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" aria-pressed="false" title="Light / dark">
         <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
         <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
@@ -67,33 +60,22 @@
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-grid">
         <div class="hero-copy">
-          <h1 id="hero-title">The math<br>behind <em>music</em></h1>
+          <h1 id="hero-title">The math behind<br><em>what you're playing</em></h1>
+          <p class="hero-lead">Play a song on Spotify, in the desktop app or the web player. Sipra listens and works out its tempo, key and chords live, and shows the math behind every number.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#live">
-              Start
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 4v15M6 13l6 6 6-6"/>
-              </svg>
-            </a>
-            <button class="btn btn-outline" type="button" data-open-concepts aria-haspopup="dialog">
-              Math map
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6"/>
-              </svg>
-            </button>
+            <a class="btn btn-primary" href="#live">Start listening<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v15M6 13l6 6 6-6"/></svg></a>
+            <a class="btn btn-outline" href="math.html">Math map<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </div>
         </div>
-
-        <ol class="hero-index" aria-label="Lab modules">
-          <li><a href="#live"><span class="hi-num">01</span><span class="hi-name">Live</span><code>Spotify → math</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
-          <li><a href="#deck"><span class="hi-num">02</span><span class="hi-name">Signal</span><code>T = 60 / BPM</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
-          <li><a href="#pitch"><span class="hi-num">03</span><span class="hi-name">Pitch</span><code>f = 440 · 2<sup>n/12</sup></code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
-          <li><a href="#rhythm"><span class="hi-num">04</span><span class="hi-name">Rhythm</span><code>LCM(x, y)</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
-          <li><a href="#session"><span class="hi-num">05</span><span class="hi-name">Stats</span><code>x̄ = Σx / n</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+        <ol class="hero-index" aria-label="On this page">
+          <li><a href="#live"><span class="hi-num">01</span><span class="hi-name">Listen</span><code>Spotify → math</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+          <li><a href="#liveChart"><span class="hi-num">02</span><span class="hi-name">Chord chart</span><code>| Am | F | C | G |</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+          <li><a href="#math"><span class="hi-num">03</span><span class="hi-name">The math</span><code>T = 60 / BPM</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+          <li><a href="#session"><span class="hi-num">04</span><span class="hi-name">Stats</span><code>x̄ = Σx / n</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+          <li><a href="math.html"><span class="hi-num">05</span><span class="hi-name">Math map</span><code>labs + lessons</code><svg class="hi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
         </ol>
       </div>
     </section>
-
 
     <section class="section wrap" id="live" aria-labelledby="live-title">
       <div class="section-head">
@@ -222,305 +204,57 @@
       </div>
     </section>
 
-    <section class="section wrap" id="deck" aria-labelledby="deck-title">
+    <section class="section wrap" id="math" aria-labelledby="math-title">
       <div class="section-head">
         <div class="section-heading">
-          <h2 id="deck-title">Signal</h2>
+          <h2 id="math-title">The math in this song</h2>
+          <p class="section-lead">Every card uses the song that's playing right now.</p>
         </div>
+        <a class="btn btn-outline mm-link" href="math.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>Math map</a>
       </div>
-
-      <div class="deck glass">
-        <div class="deck-grid">
-          <div class="deck-track">
-            <div class="track-top">
-              <div class="track-glyph" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-              <div class="track-id">
-                <div class="track-name-row">
-                  <h3 class="track-name" id="trackName" title="Procedural Etude in A">Procedural Etude in A</h3>
-                  <span class="track-badge demo" id="trackBadge">Demo</span>
-                </div>
-                <p class="track-meta">
-                  <span id="trackSource">Generated in-browser</span>
-                  <span class="meta-sep" aria-hidden="true"></span>
-                  <span id="trackDurationLabel">0:20</span>
-                  <span class="meta-sep" aria-hidden="true"></span>
-                  <span id="trackFormat">MONO · generated</span>
-                  <span class="meta-sep" aria-hidden="true"></span>
-                  <span id="trackKey">A minor</span>
-                  <span class="meta-sep" aria-hidden="true"></span>
-                  <span id="trackMeter">4/4</span>
-                </p>
-              </div>
-            </div>
-
-            <div class="transport">
-              <button class="play-btn" id="playBtn" type="button" aria-label="Play audio">
-                <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.2 4.6a1 1 0 0 0-1.5.86v13.08a1 1 0 0 0 1.5.86l11.1-6.54a1 1 0 0 0 0-1.72z"/></svg>
-                <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-              </button>
-              <div class="timeline">
-                <div class="time-labels"><span id="currentTime">0:00</span><span id="totalTime">0:20</span></div>
-                <input id="seekBar" type="range" min="0" max="20" step="0.01" value="0" aria-label="Seek through the track">
-              </div>
-              <button class="icon-btn" id="loopBtn" type="button" aria-label="Loop audio" aria-pressed="false" title="Loop">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M17 2.8 20.2 6 17 9.2"/><path d="M3.8 11V9.8A3.8 3.8 0 0 1 7.6 6H20"/><path d="M7 21.2 3.8 18 7 14.8"/><path d="M20.2 13v1.2a3.8 3.8 0 0 1-3.8 3.8H4"/>
-                </svg>
-              </button>
-              <div class="volume-control">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M4 9.5v5h3.5L13 19V5L7.5 9.5z"/><path d="M16.5 9a4.5 4.5 0 0 1 0 6"/><path d="M19.2 6.5a8 8 0 0 1 0 11"/>
-                </svg>
-                <input id="volume" type="range" min="0" max="100" step="1" value="80" aria-label="Volume">
-                <div class="vu" id="deckVu" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-              </div>
-            </div>
-
-            <div class="deck-controls">
-              <div class="control-block">
-                <span class="control-label">Tempo</span>
-                <div class="bpm-row">
-                  <div class="stepper">
-                    <button id="bpmDown" type="button" aria-label="Decrease tempo">−</button>
-                    <input id="bpmInput" type="number" min="30" max="300" step="1" value="96" inputmode="decimal" aria-label="Beats per minute">
-                    <span class="unit">BPM</span>
-                    <button id="bpmUp" type="button" aria-label="Increase tempo">+</button>
-                  </div>
-                  <button class="btn btn-outline btn-tiny tap-btn" id="tapBtn" type="button">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M9 10V5.5a1.5 1.5 0 0 1 3 0V10"/><path d="M12 9V4.5a1.5 1.5 0 0 1 3 0V10"/><path d="M15 10V6.5a1.5 1.5 0 0 1 3 0v7.2A6.3 6.3 0 0 1 11.7 20 6.7 6.7 0 0 1 5 13.3V10a1.5 1.5 0 0 1 3 0v2.5"/><path d="M9 12.5v3"/></svg>
-                    Tap
-                  </button>
-                  <div class="tempo-scale" role="group" aria-label="Double or halve the tempo">
-                    <button id="halfTempoBtn" type="button" title="Halve the tempo" aria-label="Halve the tempo">½×</button>
-                    <button id="doubleTempoBtn" type="button" title="Double the tempo" aria-label="Double the tempo">2×</button>
-                  </div>
-                </div>
-              </div>
-              <div class="control-block">
-                <label class="control-label" for="rootSelect">Root pitch</label>
-                <select class="root-select" id="rootSelect" aria-label="Root pitch of the current track"></select>
-              </div>
-              <div class="control-block">
-                <label class="control-label" for="keyModeSelect">Key mode</label>
-                <select class="root-select mode-select" id="keyModeSelect" aria-label="Major or minor key mode">
-                  <option value="major">Major</option>
-                  <option value="minor">Minor</option>
-                </select>
-              </div>
-              <div class="control-block">
-                <label class="control-label" for="meterSelect">Time signature</label>
-                <select class="root-select meter-select" id="meterSelect" aria-label="Time signature" title="Automatic detection estimates 3/4 or 4/4. You can set 2/4 or 6/8 manually.">
-                  <option value="4/4">4/4</option>
-                  <option value="3/4">3/4</option>
-                  <option value="2/4">2/4</option>
-                  <option value="6/8">6/8</option>
-                </select>
-              </div>
-              <p class="tap-copy" id="tapHint">Tap 4× or type BPM</p>
-            </div>
-          </div>
-
-          <div class="deck-upload">
-            <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Upload an MP3, WAV, or M4A audio file">
-              <span class="upload-spinner" aria-hidden="true"></span>
-              <span class="upload-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
-                </svg>
-              </span>
-              <strong>Add a song</strong>
-              <span class="upload-sub">MP3 · WAV · M4A</span>
-              
-            </div>
-            <input id="fileInput" type="file" accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-m4a,audio/mp4" hidden>
-            <div class="upload-actions">
-              <span class="file-status" id="fileStatus">Demo synthesized locally at 96 BPM</span>
-              <button class="chip-btn" id="loadDemo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Demo</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="analysis-strip" id="analysisStrip">
-          <span class="analysis-mark"><span id="analysisLabel">Demo reference</span></span>
-          <p class="analysis-summary" id="analysisSummary" aria-live="polite">96 BPM · A minor · 4/4</p>
-          <span class="analysis-confidence" id="analysisConfidence" title="Known values for the generated demo">Known</span>
-          <button class="text-btn analysis-action" id="analyzeBtn" type="button" title="Run tempo, key, and meter detection again">
-            Re-analyze
-          </button>
-        </div>
-
-        <div class="metric-grid" aria-label="Track measurements">
-          <article class="metric">
-            <div class="metric-top"><span>Duration</span><span class="metric-code">D</span></div>
-            <p class="metric-value"><span id="metricDuration">0:20</span></p>
-            <p class="metric-caption">length</p>
+      <div class="song-math">
+          <article class="sm-card">
+            <div class="sm-top"><span class="sm-num">01</span><h3>Periodicity</h3></div>
+            <p class="sm-idea">The beat repeats every <b>T</b> seconds, so beat <i>k</i> lands at <i>t</i> = <i>k</i>·T.</p>
+            <code class="sm-formula">T = 60 / BPM &nbsp;·&nbsp; N = D · BPM / 60</code>
+            <p class="sm-live" id="smTempo">Start listening to see it worked out with your song.</p>
+            <div class="sm-actions"><button class="learn-btn" type="button" data-learn="tempo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button><a class="text-btn" href="math.html#lab-signal">Tap a tempo →</a></div>
           </article>
-          <article class="metric">
-            <div class="metric-top"><span>Beat interval</span><span class="metric-code">T</span></div>
-            <p class="metric-value"><span id="metricBeatInterval">0.625</span><small>s</small></p>
-            <p class="metric-caption" id="metricBeatFormula">T = 60 / 96</p>
+          <article class="sm-card">
+            <div class="sm-top"><span class="sm-num">02</span><h3>Equal temperament</h3></div>
+            <p class="sm-idea">Each semitone multiplies the frequency by 2<sup>1/12</sup>: a geometric sequence. Twelve steps double it.</p>
+            <code class="sm-formula">f = 440 · 2<sup>n/12</sup></code>
+            <p class="sm-live" id="smKey">Start listening to see it worked out with your song.</p>
+            <div class="sm-actions"><button class="learn-btn" type="button" data-learn="keys"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button><a class="text-btn" href="math.html#lab-pitch">Play the keyboard →</a></div>
           </article>
-          <article class="metric">
-            <div class="metric-top"><span>Total beats</span><span class="metric-code">N</span></div>
-            <p class="metric-value" id="metricBeats">32.0</p>
-            <p class="metric-caption">N = D · BPM / 60</p>
+          <article class="sm-card">
+            <div class="sm-top"><span class="sm-num">03</span><h3>Ratios in chords</h3></div>
+            <p class="sm-idea">Chord notes sound smooth together because their frequencies are close to small whole-number ratios.</p>
+            <code class="sm-formula">major ≈ 4 : 5 : 6 &nbsp;·&nbsp; minor ≈ 10 : 12 : 15</code>
+            <p class="sm-live" id="smChord">Start listening to see it worked out with your song.</p>
+            <div class="sm-actions"><button class="learn-btn" type="button" data-learn="chords"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button><a class="text-btn" href="math.html#lab-pitch">Hear the ratios →</a></div>
           </article>
-          <article class="metric">
-            <div class="metric-top"><span>Tempo</span><span class="metric-code">BPM</span></div>
-            <p class="metric-value"><span id="metricBpm">96</span></p>
-            <p class="metric-caption">tap or type</p>
+          <article class="sm-card">
+            <div class="sm-top"><span class="sm-num">04</span><h3>Bars, loops &amp; remainders</h3></div>
+            <p class="sm-idea">Counting beats in a bar is division with remainder; a chord loop is a periodic sequence.</p>
+            <code class="sm-formula">beat in bar = (k mod B) + 1 &nbsp;·&nbsp; loop = L · B · T</code>
+            <p class="sm-live" id="smLoop">Start listening to see it worked out with your song.</p>
+            <div class="sm-actions"><button class="learn-btn" type="button" data-learn="meter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button><a class="text-btn" href="math.html#lab-rhythm">Try polyrhythms →</a></div>
           </article>
-        </div>
-
-        <div class="viz-panel">
-          <div class="viz-head">
-            <div class="viz-tabs" role="tablist" aria-label="Visualizer mode">
-              <button class="viz-tab" id="spectrumTab" type="button" role="tab" aria-selected="true" aria-controls="vizCanvas" data-view="spectrum">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 18V9M8 18V5M12 18v-6M16 18V7M20 18v-4"/></svg>
-                FFT
-              </button>
-              <button class="viz-tab" id="waveTab" type="button" role="tab" aria-selected="false" aria-controls="vizCanvas" data-view="waveform">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 12h2l2-5 3 10 3-12 3 9 2-4h3"/></svg>
-                Beats
-              </button>
-            </div>
-            <div class="viz-status" id="vizStatus"><span id="vizModeLabel">Spectrum preview</span></div>
-          </div>
-          <div class="canvas-wrap">
-            <canvas id="vizCanvas" role="img" aria-label="Spectrum preview of the current track. Press play for the live Fourier spectrum."></canvas>
-          </div>
-          <div class="viz-foot">
-            <p class="accent" id="peakReadout">Peak —</p>
-            <p id="vizFooterText"></p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section wrap" id="pitch" aria-labelledby="pitch-title">
-      <div class="section-head">
-        <div class="section-heading">
-          <h2 id="pitch-title">Pitch</h2>
-        </div>
-      </div>
-
-      <div class="pitch-grid">
-        <div class="module-panel glass pitch-card">
-          <div class="pitch-readout">
-            <div>
-              <p class="pitch-note" id="noteName">A<sup>4</sup></p>
-              <div class="pitch-badges">
-                <span class="pitch-badge" id="noteSemitones">n = 0</span>
-                <span class="pitch-badge" id="noteRatio">× 1.0000 from A4</span>
-              </div>
-            </div>
-            <div class="pitch-frequency">
-              <strong id="noteFreq">440.00</strong>
-              <small>HERTZ</small>
-            </div>
-          </div>
-
-          <div class="piano" id="piano" aria-label="Chromatic piano keyboard, C4 through B4"></div>
-          
-
-          <div class="semitone-control">
-            <div class="label-row">
-              <label for="semitoneSlider">Semitones</label>
-              <output id="semitoneOutput" for="semitoneSlider">n = 0</output>
-            </div>
-            <input id="semitoneSlider" type="range" min="-12" max="12" step="1" value="0" aria-label="Semitone offset from A4">
-            <div class="slider-labels"><span>−12 · A3</span><span>0 · A4</span><span>+12 · A5</span></div>
-          </div>
-
-          <div class="pitch-actions">
-            <button class="btn btn-primary" id="playToneBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
-              Play
-            </button>
-            <button class="btn btn-outline" id="setRootBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5"/></svg>
-              Set root
-            </button>
-            <button class="chip-btn" id="resetPitchBtn" type="button" aria-label="Reset to A4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>A4</button>
-          </div>
-          <p class="tone-status" id="toneStatus" aria-live="polite">A4 = 440 Hz</p>
-        </div>
-
-        <div class="module-panel glass graph-card">
-          <div class="panel-head">
-            <div>
-              <h3>Frequency vs. semitone</h3>
-            </div>
-            <code class="panel-formula">f(n) = 440 · 2<sup>n/12</sup></code>
-          </div>
-          <div class="chart-wrap">
-            <canvas id="pitchCanvas" role="img" aria-label="Graph of frequency growing exponentially from 220 hertz at n equals minus 12 to 880 hertz at n equals plus 12."></canvas>
-          </div>
-          <div class="graph-notes">
-            <div class="graph-note"><span>Common ratio</span><strong>2<sup>1/12</sup> ≈ 1.05946</strong></div>
-            <div class="graph-note"><span>12 steps</span><strong>×2</strong></div>
-            <div class="graph-note"><span>Current step</span><strong id="graphCurrent">n = 0 · 440.00 Hz</strong></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section wrap" id="rhythm" aria-labelledby="rhythm-title">
-      <div class="section-head">
-        <div class="section-heading">
-          <h2 id="rhythm-title">Rhythm</h2>
-        </div>
-      </div>
-
-      <div class="module-panel glass">
-        <div class="poly-layout">
-          <div class="poly-intro">
-            <div>
-              <div class="ratio-presets" role="group" aria-label="Polyrhythm ratio">
-                <button class="ratio-btn" type="button" data-x="2" data-y="3" aria-pressed="false">2 : 3</button>
-                <button class="ratio-btn" type="button" data-x="3" data-y="4" aria-pressed="true">3 : 4</button>
-                <button class="ratio-btn" type="button" data-x="4" data-y="5" aria-pressed="false">4 : 5</button>
-                <button class="ratio-btn" type="button" data-x="5" data-y="7" aria-pressed="false">5 : 7</button>
-              </div>
-            </div>
-            <div class="lcm-display">
-              <div class="lcm-number-row"><strong id="lcmValue">12</strong><span>steps</span></div>
-              <p class="lcm-caption" id="lcmCaption">LCM(3, 4) = 12</p>
-            </div>
-            <div class="poly-meta">
-              <span id="polyCycleTime">Cycle = 4 beats · 2.500 s</span>
-              <span id="polyStepTime">Step = 0.208 s</span>
-            </div>
-            <div class="poly-actions">
-              <button class="btn btn-primary" id="polyPlayBtn" type="button" aria-pressed="false">
-                <svg class="poly-play-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.2 4.6a1 1 0 0 0-1.5.86v13.08a1 1 0 0 0 1.5.86l11.1-6.54a1 1 0 0 0 0-1.72z"/></svg>
-                <svg class="poly-stop-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:none"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
-                <span id="polyPlayLabel">Play</span>
-              </button>
-              <span class="poly-tempo" id="polyTempoLabel">Tempo-locked · 96 BPM</span>
-            </div>
-          </div>
-
-          <div class="sequencer">
-            <div class="seq-top">
-              <span id="seqTitle"><strong>3 : 4</strong></span>
-              <span id="seqStepReadout">step — / 12</span>
-            </div>
-            <div class="poly-rows" id="polyRows" aria-live="off"></div>
-            <div class="seq-axis" aria-hidden="true">
-              <span><i class="axis-mark"></i>1</span>
-              <span>2</span>
-              <span>3</span>
-              <span>4</span>
-            </div>
-            <div class="seq-legend">
-              <span class="legend-item"><i class="legend-swatch"></i>A</span>
-              <span class="legend-item"><i class="legend-swatch violet"></i>B</span>
-              <span class="legend-item"><i class="legend-swatch outline"></i>now</span>
-            </div>
-            <p class="seq-caption" id="seqCaption"></p>
-          </div>
-        </div>
+          <article class="sm-card">
+            <div class="sm-top"><span class="sm-num">05</span><h3>Fourier analysis</h3></div>
+            <p class="sm-idea">Any sound is a sum of sine waves. The spectrum shows how strong each frequency is.</p>
+            <code class="sm-formula">X<sub>k</sub> = Σ x<sub>n</sub> e<sup>−i2πkn/N</sup></code>
+            <p class="sm-live" id="smSpectrum">Start listening to see it worked out with your song.</p>
+            <div class="sm-actions"><button class="learn-btn" type="button" data-learn="spectrum"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button><a class="text-btn" href="math.html#lab-signal">See a song's spectrum →</a></div>
+          </article>
+          <article class="sm-card">
+            <div class="sm-top"><span class="sm-num">06</span><h3>Statistics</h3></div>
+            <p class="sm-idea">Summarize your listening session with the mean, median and spread of the tempos.</p>
+            <code class="sm-formula">x̄ = Σx / n &nbsp;·&nbsp; σ = √(Σ(x − x̄)² / n)</code>
+            <p class="sm-live" id="smStats">Start listening to see it worked out with your song.</p>
+            <div class="sm-actions"><button class="learn-btn" type="button" data-learn="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button><a class="text-btn" href="#session">Your stats →</a></div>
+          </article>
       </div>
     </section>
 
@@ -533,8 +267,8 @@
 
       <div class="stats-toolbar">
         <div class="stats-meta">
-          <span class="count-pill"><span id="sessionCount">5 tracks</span></span>
-          <span id="sessionNote">Includes marked sample data</span>
+          <span class="count-pill"><span id="sessionCount">0 tracks</span></span>
+          <span id="sessionNote">Songs you listen to land here</span>
         </div>
         <div class="stats-actions">
           <button class="chip-btn" id="logCurrentBtn" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add</button>
@@ -569,7 +303,7 @@
       <div class="table-panel glass">
         <div class="table-head">
           <h3>Session tracks</h3>
-          <p class="table-note"><span class="sample-chip">Sample</span> = demo row</p>
+          <p class="table-note">Saved in this browser</p>
         </div>
         <div class="table-wrap">
           <table class="session-table">
@@ -595,97 +329,34 @@
     <div class="wrap footer-grid">
       <div class="footer-brand">
         <a class="brand" href="#top" aria-label="Sipra, back to top">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-              <path d="M2.5 12h2.2l2.1-5.7 3 11.4 2.6-8.2 1.9 5.1 1.7-2.6h5.5"/>
-              <circle cx="18.5" cy="7.1" r="1.1" fill="currentColor" stroke="none"/>
-            </svg>
-          </span>
-          <span class="brand-text">
-            <span class="brand-title">Sipra</span>
-            <span class="brand-sub">The math behind music</span>
-          </span>
-        </a>
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M2.5 12h2.2l2.1-5.7 3 11.4 2.6-8.2 1.9 5.1 1.7-2.6h5.5"/>
+            <circle cx="18.5" cy="7.1" r="1.1" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-title">Sipra</span>
+          <span class="brand-sub">The math behind music</span>
+        </span>
+      </a>
       </div>
       <nav class="footer-links" aria-label="Footer">
-        <a href="#deck">Signal deck</a>
-        <a href="#pitch">Pitch lab</a>
-        <a href="#rhythm">Polyrhythm</a>
-        <a href="#session">Statistics</a>
-        <button type="button" data-open-concepts>Math 10 map</button>
+        <a href="#live">Listen</a>
+        <a href="#liveChart">Chord chart</a>
+        <a href="#math">The math</a>
+        <a href="#session">Stats</a>
+        <a href="math.html">Math map</a>
       </nav>
-      <p class="footer-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.9 8.2 7 10 4.1-1.8 7-5.2 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg>100% in-browser</p>
+      <p class="footer-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.9 8.2 7 10 4.1-1.8 7-5.2 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg>100% in your browser: audio never leaves your computer</p>
     </div>
   </footer>
 
-  <div class="drawer-overlay" id="conceptDrawer" hidden>
-    <button class="drawer-backdrop" id="drawerBackdrop" type="button" aria-label="Close the Math 10 concept map" tabindex="-1"></button>
-    <aside class="concept-drawer" role="dialog" aria-modal="true" aria-labelledby="conceptTitle" tabindex="-1">
-      <div class="drawer-head">
-        <div>
-          <p class="eyebrow">Math 10 · concept mapping</p>
-          <h2 id="conceptTitle">The math inside the lab</h2>
-        </div>
-        <button class="icon-btn" id="closeConcepts" type="button" aria-label="Close concept map">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        </button>
-      </div>
-      <div class="drawer-body">
-
-        <article class="concept-card">
-          <div class="concept-kicker"><span>01</span>Periodicity &amp; beat spacing</div>
-          <h3>Music as a periodic function</h3>
-          <code class="concept-formula">T = 60 / BPM &nbsp;&nbsp;·&nbsp;&nbsp; N = D · BPM / 60</code>
-          <p>One beat every T seconds. Beat k sits at t = kT.</p>
-          <a class="text-btn try-link" href="#deck" data-close-goto>Try it →</a>
-        </article>
-
-        <article class="concept-card">
-          <div class="concept-kicker"><span>02</span>Geometric sequences &amp; equal temperament</div>
-          <h3>Twelve equal multipliers</h3>
-          <code class="concept-formula">f<sub>n</sub> = 440 · 2<sup>n/12</sup> &nbsp;&nbsp;·&nbsp;&nbsp; r = 2<sup>1/12</sup> ≈ 1.05946</code>
-          <p>Each semitone × 2<sup>1/12</sup>. Twelve steps = ×2 = one octave.</p>
-          <a class="text-btn try-link" href="#pitch" data-close-goto>Try it →</a>
-        </article>
-
-        <article class="concept-card">
-          <div class="concept-kicker"><span>03</span>Fourier analysis</div>
-          <h3>One signal, many frequencies</h3>
-          <code class="concept-formula">X<sub>k</sub> = Σ<sub>n=0</sub><sup>N−1</sup> x<sub>n</sub> e<sup>−i2πkn/N</sup></code>
-          <p>Any sound = a sum of sine waves. FFT shows how much of each.</p>
-          <a class="text-btn try-link" href="#deck" data-close-goto>Try it →</a>
-        </article>
-
-        <article class="concept-card">
-          <div class="concept-kicker"><span>04</span>Ratios, fractions &amp; number theory</div>
-          <h3>The shared grid beneath a polyrhythm</h3>
-          <code class="concept-formula">LCM(3, 4) = 12 &nbsp;&nbsp;·&nbsp;&nbsp; LCM(x,y) = xy / GCD(x,y)</code>
-          <p>3 against 4 lines up every 12 steps.</p>
-          <a class="text-btn try-link" href="#rhythm" data-close-goto>Try it →</a>
-        </article>
-
-        <article class="concept-card">
-          <div class="concept-kicker"><span>05</span>Descriptive statistics</div>
-          <h3>Summarizing a listening session</h3>
-          <code class="concept-formula">mean = Σx / n &nbsp;&nbsp;·&nbsp;&nbsp; range = max − min</code>
-          <p>Mean, median, mode, range: four views of one set.</p>
-          <a class="text-btn try-link" href="#session" data-close-goto>Try it →</a>
-        </article>
-
-        <div class="drawer-footer">
-          <span class="badge cyan">Built for Math 10</span>
-        </div>
-      </div>
-    </aside>
-  </div>
-
-
   <nav class="dock" aria-label="Quick navigation">
     <a href="#live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg><span>Live</span></a>
-    <a href="#deck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h2l2-5 3 10 3-12 3 9 2-4h3"/></svg><span>Signal</span></a>
-    <a href="#pitch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg><span>Pitch</span></a>
-    <a href="#rhythm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="8" r="1.6"/><circle cx="12" cy="8" r="1.6"/><circle cx="19" cy="8" r="1.6"/><circle cx="5" cy="16" r="1.6"/><circle cx="10" cy="16" r="1.6"/><circle cx="14.5" cy="16" r="1.6"/><circle cx="19" cy="16" r="1.6"/></svg><span>Rhythm</span></a>
+    <a href="#math"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h6M8 4v6M14 6l5 5M19 6l-5 5M5 17h6M14 15h5M14 19h5"/></svg><span>Math</span></a>
     <a href="#session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>Stats</span></a>
+    <a href="math.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span>Map</span></a>
     <button type="button" data-learn=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button>
   </nav>
 
@@ -701,7 +372,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <!-- Application logic: Web Audio, analysis, canvas visualizers, and controls. -->
+  <!-- Application logic: live listening, analysis, lessons, stats. -->
   <script src="js/app.js"></script>
   <script src="js/analysis.js"></script>
   <script src="js/sipra-rhythm.js"></script>

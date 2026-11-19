@@ -10,6 +10,7 @@ Sipra sits next to **Spotify Web Player** and shows the math of the song that's 
 - **Beats:** beat number through the song, `N = D · BPM / 60`
 - **Spectrum and waveform**, the **loudest note** with its tuning in cents, and a **level meter**
 - **Session:** every song you played, with mean, median, mode and standard deviation of tempo
+- **Math map:** the button at the top (and the card at the bottom) opens the Sipra website's Math map: the concepts behind every number, with labs (add a song, keyboard, tap tempo, polyrhythms)
 
 Every card has a **Learn** button that opens a full lesson: the idea, the formulas, the math worked out with *your* song, a calculator, why it matters, and a practice question.
 
@@ -40,7 +41,7 @@ All audio is analysed on your computer. Nothing is uploaded, and no Spotify logi
 - **Meter:** 2/4, 3/4, 4/4, 5/4, 7/4, plus compound 6/8, 9/8 and 12/8 (beats split in three) and swing feel. It looks at where chords change, where the kick and bass land, whether there's a snare backbeat, and how hits are spread inside each beat. 2/4 and 4/4 can sound identical, so when the evidence fits both, Sipra shows the other reading too.
 - **Key:** the whole song's chroma (strength of each of the 12 notes) correlated with key profiles.
 - **Chords:** recent chroma compared with chord templates (major, minor, dim, aug, sus2, sus4, 7, maj7, m7), with drum hits filtered out. The bass note weighs in, so a loud melody doesn't pull the chord off.
-- **Chart:** the chroma is averaged over each tracked beat, every chord is scored on every beat, and a Viterbi search finds the most likely chord path through the song (changing chord costs a little, more so away from beat 1). Trying each possible downbeat, the one where the chords change on bar lines wins, which also fixes the beat dots and can tell 3/4 from 4/4. The loop is the shortest run of bars (1–8) that repeats.
+- **Chart:** bars a few seconds old are frozen, so the past never changes. The chroma is averaged over each tracked beat, every chord is scored on every beat, and a Viterbi search finds the most likely chord path through the song (changing chord costs a little, more so away from beat 1). Trying each possible downbeat, the one where the chords change on bar lines wins, which also fixes the beat dots and can tell 3/4 from 4/4. The loop is the shortest run of bars (1–8) that repeats.
 - **Tuning:** spectral peaks' average offset from the nearest semitone (a circular mean), so a song tuned to A4 = 446 Hz still lands on the right notes.
 - **Key change:** the last 30 s get their own key estimate; the chords then settle close calls (G vs D major: is there a C or a C♯?).
 

@@ -31,7 +31,10 @@ function tc(key, alpha) {
   apply(root.getAttribute("data-theme") || "light");
 })();
 
-/* Sipra — application behavior. Front-end markup: index.html. Styles: css/styles.css. */
+/* Sipra — application behavior, shared by both pages (styles: css/styles.css):
+   - index.html (data-page="live"): Spotify listening + Stats of the songs you played
+   - math.html  (data-page="math"): the Math map labs (song upload deck, keyboard, polyrhythm)
+   Every part checks that its elements exist, so each page only runs what it has. */
 
     (() => {
       "use strict";
@@ -49,6 +52,23 @@ function tc(key, alpha) {
         { id: "sample-4", name: "Afterimage", duration: 178.0, bpm: 100, rootMidi: 60, kind: "sample", key: { tonicPc: 0, mode: "major", confidence: 1 }, timeSignature: "3/4" },
         { id: "sample-5", name: "Metric Bloom", duration: 257.0, bpm: 75, rootMidi: 52, kind: "sample", key: { tonicPc: 4, mode: "minor", confidence: 1 }, timeSignature: "4/4" }
       ];
+      const PAGE = (document.body && document.body.dataset.page) || "all";
+      // The Live page keeps the songs you played (in this browser), not sample rows.
+      const SESSION_KEY = "sipra-web-session";
+      function loadSavedSession() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(SESSION_KEY) || "[]");
+          return Array.isArray(saved) ? saved.filter((t) => t && Number.isFinite(t.bpm) && t.key) : [];
+        } catch (e) { return []; }
+      }
+      function saveSession() {
+        if (PAGE !== "live") return;
+        const keep = state.tracks.filter((t) => t.kind !== "sample").slice(-200).map((t) => ({
+          id: t.id, kind: t.kind, name: t.name, duration: t.duration, bpm: t.bpm, key: t.key,
+          rootMidi: t.rootMidi, timeSignature: t.timeSignature, sourceLabel: t.sourceLabel, formatLabel: t.formatLabel, analysis: t.analysis
+        }));
+        try { localStorage.setItem(SESSION_KEY, JSON.stringify(keep)); } catch (e) {}
+      }
       const MAJOR_PROFILE = [0.748, 0.060, 0.488, 0.082, 0.670, 0.460, 0.096, 0.715, 0.104, 0.366, 0.057, 0.400];
       const MINOR_PROFILE = [0.712, 0.084, 0.474, 0.618, 0.049, 0.460, 0.105, 0.747, 0.404, 0.067, 0.133, 0.330];
 
@@ -69,7 +89,7 @@ function tc(key, alpha) {
         bpm: 96,
         rootMidi: 69,
         track: null,
-        tracks: SAMPLE_TRACKS.map((track) => ({ ...track })),
+        tracks: PAGE === "live" ? loadSavedSession() : SAMPLE_TRACKS.map((track) => ({ ...track })),
         view: "spectrum",
         peaks: null,
         staticSpectrum: null,
@@ -2811,7 +2831,7 @@ function tc(key, alpha) {
         if (el.sessionNote) {
           const hasSamples = state.tracks.some((track) => track.kind === "sample");
           el.sessionNote.textContent = count === 0
-            ? "No tracks logged yet"
+            ? (PAGE === "live" ? "Songs you listen to land here" : "No tracks logged yet")
             : hasSamples
               ? "Includes samples"
               : "Live session data";
@@ -2831,6 +2851,7 @@ function tc(key, alpha) {
         renderDurationStats(state.tracks);
         renderSessionTable();
         updateSessionMeta();
+        saveSession();
       }
 
       function addCurrentTrackToSession() {
@@ -3193,7 +3214,8 @@ function tc(key, alpha) {
         installCanvasEvents();
         setView("spectrum");
         startAnimationLoop();
-        await loadDemoTrack();
+        // Only the Math map has the song deck; the Live page skips the demo track.
+        if (el.playBtn || el.vizCanvas) await loadDemoTrack();
       }
 
       if (document.readyState === "loading") {

@@ -294,6 +294,9 @@
       const t = SP && SP.state.track;
       chartView.update(r, { title: live.trackTitle || (t && t.title) || "", artist: t ? t.artist : "" });
     }
+    renderSongMath();
+    // Lessons on the Math map page use the last song you listened to.
+    try { localStorage.setItem("sipra-web-now", JSON.stringify(liveSnapshot())); } catch (e) {}
     setStatus(engine.probing ? "Live · checking song" : "Live", "live");
     el.save.disabled = live.saved;
   }, 1500);
@@ -406,6 +409,76 @@
     const p = t.position + (t.playing ? (Date.now() - t.at) / 1000 : 0);
     return { pos: clamp(p, 0, t.duration || p), dur: t.duration, playing: t.playing };
   }
+
+  /* ---------- "The math in this song" cards ---------- */
+  const sm = { tempo: $("smTempo"), key: $("smKey"), chord: $("smChord"), loop: $("smLoop"), spectrum: $("smSpectrum"), stats: $("smStats") };
+  const f2 = (v, d = 2) => Number(v).toFixed(d);
+  const noteHz = (pc, octave = 4) => 440 * Math.pow(2, (pc - 9 + 12 * (octave - 4)) / 12);
+  function setCard(node, html) {
+    if (!node) return;
+    node.classList.toggle("on", Boolean(html));
+    if (html && node.innerHTML !== html) node.innerHTML = html;
+    if (!html) node.textContent = "Start listening to see it worked out with your song.";
+  }
+  function renderSongMath() {
+    if (!sm.tempo) return;
+    const r = live.result && live.result.ready ? live.result : null;
+    // 01 Periodicity
+    if (r) {
+      const T = 60 / r.bpm, sp = spotifyPosition();
+      const D = sp && sp.dur ? sp.dur : (live.engine ? live.engine.seconds : 0);
+      const k = sp && sp.dur ? Math.floor((sp.pos * r.bpm) / 60) : Math.floor(D / T);
+      setCard(sm.tempo, `T = 60 / ${Math.round(r.bpm)} = <b>${f2(T, 3)} s</b> per beat<br>beat ${k}: t = ${k} × ${f2(T, 3)} = ${f2(k * T, 1)} s<br>` +
+        (sp && sp.dur ? `N = ${Math.round(D)} · ${Math.round(r.bpm)} / 60 ≈ <b>${Math.round((D * r.bpm) / 60)} beats</b> in the song` : `${Math.round(D)} s heard ≈ ${Math.round((D * r.bpm) / 60)} beats so far`) +
+        (r.tempo && r.tempo.trend !== "steady" ? `<br>tempo ${r.tempo.trend}` : ""));
+    } else setCard(sm.tempo, "");
+    // 02 Equal temperament
+    if (r) {
+      const k = r.keyNow || r.key, n = k.tonicPc - 9;
+      let h = `home note ${NOTE[k.tonicPc]}4: n = ${n}<br>f = 440 · 2<sup>${n}/12</sup> = <b>${f2(noteHz(k.tonicPc), 1)} Hz</b><br>` +
+        `one octave up: × 2 = ${f2(noteHz(k.tonicPc) * 2, 1)} Hz`;
+      if (r.tuning && Math.abs(r.tuning.cents) >= 5) h += `<br>this song is tuned ${r.tuning.cents > 0 ? "+" : ""}${r.tuning.cents}¢: A4 = 440 · 2<sup>${r.tuning.cents}/1200</sup> = ${f2(r.tuning.a4, 1)} Hz`;
+      setCard(sm.key, h);
+    } else setCard(sm.key, "");
+    // 03 Ratios in chords
+    const info = live.engine ? live.engine.chordInfo() : null, c = info && info.current;
+    if (c) {
+      const fs = c.tones.map((iv) => noteHz((c.root + iv) % 12 + (c.root + iv >= 12 ? 12 : 0)));
+      const base = fs[0];
+      setCard(sm.chord, `${c.name}: ${c.notes.join(" · ")}<br>${fs.map((f) => f2(f, 1)).join(" : ")} Hz<br>÷ ${f2(base, 1)} → <b>${fs.map((f) => f2(f / base, 3)).join(" : ")}</b>` +
+        (RATIOS[c.quality] ? `<br>≈ ${RATIOS[c.quality]}` : ""));
+    } else setCard(sm.chord, "");
+    // 04 Bars, loops & remainders
+    const chart = r && r.chart;
+    if (chart && chart.bars.length) {
+      // Count beats from bar 1: beat k (from 0) is beat (k mod B) + 1 of bar ⌊k / B⌋ + 1.
+      const B = chart.beatsPerBar, T = 60 / r.bpm, pos = Number.isFinite(live.beatPos) ? live.beatPos : 0;
+      const k = Math.max(0, chart.currentBar - 1) * B + pos;
+      let h = `beat k = ${k}: ${k} mod ${B} = ${pos} → beat <b>${pos + 1}</b> of bar ⌊${k} / ${B}⌋ + 1 = <b>${Math.floor(k / B) + 1}</b>`;
+      if (chart.loop) {
+        const L = chart.loop.bars, P = L * B * T;
+        h += `<br>loop of ${L} bar${L > 1 ? "s" : ""}: ${L} × ${B} × ${f2(T, 3)} = <b>${f2(P, 1)} s</b><br>${chart.loop.names.join(" → ")}`;
+      }
+      setCard(sm.loop, h);
+    } else setCard(sm.loop, "");
+    // 05 Fourier analysis
+    if (live.analyser && live.peakHz) {
+      const sr = live.ctx.sampleRate, N = live.analyser.fftSize, exact = 12 * Math.log2(live.peakHz / 440), n = Math.round(exact);
+      const pc = (((69 + n) % 12) + 12) % 12, oct = Math.floor((69 + n) / 12) - 1;
+      setCard(sm.spectrum, `strongest frequency: <b>${f2(live.peakHz, 1)} Hz</b> ≈ ${NOTE[pc]}${oct} (n = ${n}, ${Math.round((exact - n) * 100)}¢)<br>` +
+        `bin width Δf = f<sub>s</sub> / N = ${sr} / ${N} = ${f2(sr / N, 2)} Hz`);
+    } else setCard(sm.spectrum, "");
+    // 06 Statistics
+    const bpms = window.MBMApp && window.MBMApp.sessionBpms ? window.MBMApp.sessionBpms() : [];
+    if (bpms.length) {
+      const n = bpms.length, mean = bpms.reduce((a, b) => a + b, 0) / n, sorted = [...bpms].sort((a, b) => a - b);
+      const med = n % 2 ? sorted[n >> 1] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+      const sd = Math.sqrt(bpms.reduce((s, v) => s + (v - mean) ** 2, 0) / n);
+      setCard(sm.stats, `${n} song${n > 1 ? "s" : ""}: x̄ = ${f2(bpms.reduce((a, b) => a + b, 0), 0)} / ${n} = <b>${f2(mean, 1)} BPM</b><br>median ${f2(med, 1)} · σ = ${f2(sd, 1)} · range ${f2(sorted[n - 1] - sorted[0], 0)}`);
+    } else setCard(sm.stats, r ? "Each song is saved to Stats when the next one starts (or tap Add to Stats)." : "");
+  }
+  renderSongMath();
+  setInterval(() => { if (!live.engine) renderSongMath(); }, 3000);
 
   /* ---------- lessons overlay ---------- */
   let learnView = null;
@@ -526,6 +599,7 @@
     const latency = (live.ctx.outputLatency || 0) + (live.ctx.baseLatency || 0);
     const t = live.ctx.currentTime - latency - (r.lastBeatTime + live.offset);
     const k = Math.floor(t / T), pos = (((r.lastBeatPos || 0) + k) % B + B) % B, lit = t / T - k < 0.28;
+    live.beatPos = pos;
     [...el.pulse.children].forEach((d, i) => d.classList.toggle("on", lit && i === pos));
     if (k !== live.lastBeat) { live.lastBeat = k; bump(el.bpm.parentElement); }
     if (sp && sp.dur) el.beats.textContent = `beat ${Math.floor((sp.pos * r.bpm) / 60) + 1} / ${Math.round((sp.dur * r.bpm) / 60)}  (N = D·BPM/60)`;

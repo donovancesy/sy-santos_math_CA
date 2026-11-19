@@ -47,9 +47,20 @@
       for (let i = 0; i < 12; i += 1) norm += v[i] * v[i];
       norm = Math.sqrt(norm);
       for (let i = 0; i < 12; i += 1) v[i] /= norm;
-      TEMPLATES.push({ root, q, v });
+      // Mean-centred copy for correlation scoring in the chart.
+      const vc = new Float64Array(12);
+      let mean = 0, nc = 0;
+      for (let i = 0; i < 12; i += 1) mean += v[i];
+      mean /= 12;
+      for (let i = 0; i < 12; i += 1) { vc[i] = v[i] - mean; nc += vc[i] * vc[i]; }
+      nc = Math.sqrt(nc);
+      for (let i = 0; i < 12; i += 1) vc[i] /= nc;
+      TEMPLATES.push({ root, q, v, vc });
     }
   }
+
+  // A beat scores "no chord" unless some chord correlates better than this.
+  const NC_SCORE = 0.45;
 
   const MAJOR_DEGREES = { 0: "I", 2: "II", 4: "III", 5: "IV", 7: "V", 9: "VI", 11: "VII" };
   const MINOR_DEGREES = { 0: "I", 2: "II", 3: "♭III", 5: "IV", 7: "V", 8: "♭VI", 10: "♭VII" };
@@ -241,6 +252,8 @@
       // Transcription: every chroma frame of the song, the beat grid, tempo log.
       this.frames = [];
       this.grid = [];
+      // Bars already written into the chart: fixed for good (see transcribe).
+      this.frozen = { locked: false, bars: [], untilT: -Infinity, lastLabel: -1, lastNumber: 0, B: 4, changes: 0, startT: null };
       this.tempoLog = [];
       this.chart = null;
       this.tune = { re: 0, im: 0, w: 0, frames: 0 };
@@ -360,91 +373,116 @@
 
     // Merge the tracker's latest beats into the song-long beat grid. The newest
     // stretch is re-tracked every update, so it replaces what we had there.
+    // Beats inside bars that are already written into the chart never move.
     mergeBeats(beats, period) {
       if (!beats || !beats.length) return;
-      const cut = beats[0] - period * 0.5;
+      const keep = this.frozen.locked ? this.frozen.untilT : -Infinity;
+      const cut = Math.max(beats[0] - period * 0.5, keep + period * 0.4);
       while (this.grid.length && this.grid[this.grid.length - 1] >= cut) this.grid.pop();
-      for (const t of beats) this.grid.push(t);
+      for (const t of beats) if (t >= cut) this.grid.push(t);
+      // Quiet or drum-less passages: the tracker drops beats it isn't sure of,
+      // so carry the grid on at the current tempo up to now. Real beats replace
+      // these on the next update whenever the tracker finds them again.
+      const now = this.seconds - period * 0.25;
+      let lastT = this.grid.length ? this.grid[this.grid.length - 1] : null;
+      while (lastT !== null && lastT + period <= now) { lastT += period; this.grid.push(lastT); }
       if (this.grid.length > 2400) this.grid.splice(0, this.grid.length - 2400);
     }
 
     /* Chord chart, beat by beat:
      *  1. average the chroma over each beat (and the bass notes under it),
-     *  2. score every chord shape on every beat (plus "no chord"),
-     *  3. Viterbi: the best path of chords through the song, where changing
-     *     chord costs a little, and costs more away from the start of a bar,
+     *  2. score every chord shape on every beat (plus "no chord"), using a
+     *     mean-centred correlation so muddy, flat sound doesn't favour 4-note chords,
+     *  3. Viterbi: the best path of chords, where changing chord costs a little,
+     *     and costs more away from the start of a bar,
      *  4. group the beats into bars, and look for the loop that repeats.
+     * Bars that are a few seconds old are frozen: they are written into the chart
+     * once and never re-labelled, so the past can't flip to one chord later.
      */
     transcribe(r, key) {
-      const grid = this.grid, fr = this.frames;
+      const grid = this.grid, fr = this.frames, F = this.frozen;
       const n = grid.length;
       if (n < 6 || !fr.length) return null;
+      if (F.startT === null) F.startT = grid[0];
       const T = r.beatPeriod || (grid[n - 1] - grid[0]) / (n - 1);
       const lastPos = r.lastBeatPos || 0;
       const diatonic = key && key.confidence > 0.3 ? diatonicSet(key) : null;
       const S = TEMPLATES.length, NC = S; // last state = no chord
       const inKey = TEMPLATES.map((tpl) => diatonic && tpl.q.tones.every(([iv]) => diatonic.has((tpl.root + iv) % 12)));
 
-      // 1–2. Per-beat chroma and emission scores.
-      const emit = new Float32Array(n * (S + 1));
-      const beatBass = new Int8Array(n).fill(-1);
-      const beatBassShare = new Float32Array(n);
+      // Only the beats after the frozen bars are (re)labelled.
+      let i0 = 0;
+      if (F.locked) { i0 = n; for (let i = 0; i < n; i += 1) if (grid[i] > F.untilT + 0.3 * T) { i0 = i; break; } }
+      const m = n - i0;
+
+      // 1–2. Per-beat chroma and emission scores (local index j = i - i0).
+      const emit = new Float32Array(Math.max(1, m) * (S + 1));
+      const beatBass = new Int8Array(Math.max(1, m)).fill(-1);
+      const beatBassShare = new Float32Array(Math.max(1, m));
       let f = 0;
-      while (f < fr.length && fr[f].t < grid[0]) f += 1;
-      for (let i = 0; i < n; i += 1) {
+      if (m > 0) while (f < fr.length && fr[f].t < grid[i0]) f += 1;
+      for (let j = 0; j < m; j += 1) {
+        const i = i0 + j;
         const a = grid[i], b = i + 1 < n ? grid[i + 1] : grid[i] + T;
         const c = new Float64Array(12), bs = new Float64Array(12);
         let cnt = 0, energy = 0;
         while (f < fr.length && fr[f].t < a) f += 1;
-        for (let j = f; j < fr.length && fr[j].t < b; j += 1) {
-          for (let k = 0; k < 12; k += 1) { c[k] += fr[j].c[k]; bs[k] += fr[j].b[k]; }
-          energy += fr[j].e; cnt += 1;
+        for (let q = f; q < fr.length && fr[q].t < b; q += 1) {
+          for (let k = 0; k < 12; k += 1) { c[k] += fr[q].c[k]; bs[k] += fr[q].b[k]; }
+          energy += fr[q].e; cnt += 1;
         }
-        const row = i * (S + 1);
+        const row = j * (S + 1);
+        let mean = 0;
+        for (let k = 0; k < 12; k += 1) mean += c[k];
+        mean /= 12;
         let norm = 0;
-        for (let k = 0; k < 12; k += 1) norm += c[k] * c[k];
+        for (let k = 0; k < 12; k += 1) { c[k] -= mean; norm += c[k] * c[k]; }
         norm = Math.sqrt(norm);
         if (!cnt || norm < 1e-9 || energy / cnt < 0.003) { emit[row + NC] = 1; continue; }
         for (let k = 0; k < 12; k += 1) c[k] /= norm;
         let bp = -1, bm = 0, bsum = 0;
         for (let k = 0; k < 12; k += 1) { bsum += bs[k]; if (bs[k] > bm) { bm = bs[k]; bp = k; } }
         const bassClear = bsum > 0 && bm / bsum > 0.22;
-        if (bassClear) { beatBass[i] = bp; beatBassShare[i] = bm / bsum; }
+        if (bassClear) { beatBass[j] = bp; beatBassShare[j] = bm / bsum; }
         for (let s = 0; s < S; s += 1) {
           const tpl = TEMPLATES[s];
           let sc = 0;
-          for (let k = 0; k < 12; k += 1) sc += c[k] * tpl.v[k];
+          for (let k = 0; k < 12; k += 1) sc += c[k] * tpl.vc[k];
           sc -= tpl.q.penalty || 0;
           // The bass is the best clue to the harmony under a loud melody:
           // reward a chord for the bass sitting on its root (or another of its
           // notes), and mark it down when the clear bass note isn't in it.
           if (bsum > 0) {
-            const rootShare = bs[tpl.root] / bsum;
-            sc += 0.22 * rootShare;
+            sc += 0.22 * (bs[tpl.root] / bsum);
             if (bassClear && bp !== tpl.root) sc += tpl.q.tones.some(([iv]) => (tpl.root + iv) % 12 === bp) ? 0.02 : -0.08 * (bm / bsum);
           }
           if (inKey[s]) sc += 0.035;
           emit[row + s] = sc;
         }
-        emit[row + NC] = 0.6;
+        emit[row + NC] = NC_SCORE;
       }
 
-      // 3. Viterbi with a change cost, tried for each possible downbeat (and for
-      //    3 vs 4 beats per bar). Chords tend to change on beat 1, so the bar
-      //    grid that lets the changes line up with bar lines scores best.
-      const back = new Int16Array(n * (S + 1));
+      // 3. Viterbi with a change cost. Before the chart is locked, every possible
+      //    downbeat (and 3 vs 4 beats per bar) is tried: chords tend to change on
+      //    beat 1, so the bar grid that lets changes land on bar lines wins.
+      //    Once locked, the grid simply continues from the last frozen bar.
+      const back = new Int16Array(Math.max(1, m) * (S + 1));
+      const changeCost = (p, B) => 0.11 + (p === 0 ? 0 : (B % 2 === 0 && p === B / 2) ? 0.07 : 0.17);
       const viterbi = (B, shift) => {
-        const pos = new Int8Array(n);
-        for (let i = 0; i < n; i += 1) pos[i] = (((lastPos + shift - (n - 1 - i)) % B) + B) % B;
+        const pos = new Int8Array(Math.max(1, m));
+        for (let j = 0; j < m; j += 1) {
+          pos[j] = F.locked ? j % B : (((lastPos + shift - (n - 1 - (i0 + j))) % B) + B) % B;
+        }
         let dp = new Float32Array(S + 1), next = new Float32Array(S + 1);
-        for (let s = 0; s <= S; s += 1) dp[s] = emit[s];
-        for (let i = 1; i < n; i += 1) {
+        for (let s = 0; s <= S; s += 1) {
+          // Carry on from the last frozen chord: switching away costs as usual.
+          dp[s] = emit[s] - (F.locked && F.lastLabel >= 0 && s !== F.lastLabel ? changeCost(pos[0], B) : 0);
+        }
+        for (let j = 1; j < m; j += 1) {
           let best = 0;
           for (let s = 1; s <= S; s += 1) if (dp[s] > dp[best]) best = s;
-          const p = pos[i];
-          // Cheap on beat 1 (a 2-beat chord can still show), dearer mid-bar.
-          const cost = 0.11 + (p === 0 ? 0 : (B % 2 === 0 && p === B / 2) ? 0.07 : 0.17);
-          const row = i * (S + 1);
+          const cost = changeCost(pos[j], B);
+          const row = j * (S + 1);
           for (let s = 0; s <= S; s += 1) {
             const stay = dp[s], jump = dp[best] - cost;
             if (stay >= jump) { next[s] = stay + emit[row + s]; back[row + s] = s; }
@@ -455,41 +493,55 @@
         let state = 0;
         for (let s = 1; s <= S; s += 1) if (dp[s] > dp[state]) state = s;
         const score = dp[state];
-        const labels = new Int16Array(n);
-        for (let i = n - 1; i >= 0; i -= 1) { labels[i] = state; state = back[i * (S + 1) + state]; }
+        const labels = new Int16Array(Math.max(1, m));
+        for (let j = m - 1; j >= 0; j -= 1) { labels[j] = state; state = back[j * (S + 1) + state]; }
         let changes = 0, onDown = 0;
-        for (let i = 1; i < n; i += 1) if (labels[i] !== labels[i - 1]) { changes += 1; if (pos[i] === 0) onDown += 1; }
+        if (F.locked && m && F.lastLabel >= 0 && labels[0] !== F.lastLabel) changes += 1;
+        for (let j = 1; j < m; j += 1) if (labels[j] !== labels[j - 1]) { changes += 1; if (pos[j] === 0) onDown += 1; }
         return { B, shift, pos, labels, score, changes, downFrac: changes ? onDown / changes : 0 };
       };
       const B0 = r.beatsPerBar || 4;
-      const base = viterbi(B0, 0);
-      let pick = base;
-      // Same bar length, different downbeat: needs a clear win to move.
-      for (let sh = 1; sh < B0; sh += 1) {
-        const v = viterbi(B0, sh);
-        if (v.score > pick.score + 0.15 + (pick === base ? 0.1 : 0)) pick = v;
-      }
-      // 3 vs 4 beats per bar, from where the chords change (simple meters only).
-      if (!r.compound && (B0 === 3 || B0 === 4) && base.changes >= 6) {
-        const alt = B0 === 3 ? 4 : 3;
-        let bestAlt = null;
-        for (let sh = 0; sh < alt; sh += 1) { const v = viterbi(alt, sh); if (!bestAlt || v.score > bestAlt.score) bestAlt = v; }
-        // Wins on score, or because nearly every change lands on its beat 1
-        // while under the current bar length many don't.
-        const clearer = bestAlt.downFrac >= 0.85 && pick.downFrac <= 0.6 && bestAlt.score > pick.score - 0.2;
-        if (clearer || bestAlt.score > pick.score + Math.max(0.6, 0.06 * base.changes)) pick = bestAlt;
+      let pick;
+      if (F.locked) {
+        pick = m > 0 ? viterbi(F.B, 0) : { B: F.B, pos: new Int8Array(1), labels: new Int16Array(1), changes: 0 };
+      } else {
+        const base = viterbi(B0, 0);
+        pick = base;
+        // Same bar length, different downbeat: needs a clear win to move.
+        for (let sh = 1; sh < B0; sh += 1) {
+          const v = viterbi(B0, sh);
+          if (v.score > pick.score + 0.15 + (pick === base ? 0.1 : 0)) pick = v;
+        }
+        // 3 vs 4 beats per bar, from where the chords change (simple meters only).
+        if (!r.compound && (B0 === 2 || B0 === 3 || B0 === 4) && base.changes >= 6) {
+          const alt = B0 === 3 ? 4 : 3;
+          let bestAlt = null;
+          for (let sh = 0; sh < alt; sh += 1) { const v = viterbi(alt, sh); if (!bestAlt || v.score > bestAlt.score) bestAlt = v; }
+          // Wins on score, or because nearly every change lands on its beat 1
+          // while under the current bar length many don't, or because the gaps
+          // between changes come in 3s (or 4s): every 6 beats is 2 bars of 3/4,
+          // not 3 bars of 2/4.
+          const gaps = [];
+          let lastChange = -1;
+          for (let j = 1; j < m; j += 1) if (base.labels[j] !== base.labels[j - 1]) { if (lastChange >= 0) gaps.push(j - lastChange); lastChange = j; }
+          const share = (d) => (gaps.length ? gaps.filter((g) => g % d === 0).length / gaps.length : 0);
+          const favours = alt === 3 ? share(3) >= 0.6 && share(4) <= 0.3 : share(4) >= 0.6 && share(3) <= 0.3;
+          const clearer = bestAlt.score > pick.score - 0.2 && ((bestAlt.downFrac >= 0.85 && pick.downFrac <= 0.6) || (gaps.length >= 4 && favours && bestAlt.downFrac >= 0.75));
+          if (clearer || bestAlt.score > pick.score + Math.max(0.6, 0.06 * base.changes)) pick = bestAlt;
+        }
+        pick.moved = pick !== base;
       }
       const { B, pos, labels } = pick;
 
-      // 4. Bars. Beats before the first downbeat make a pickup bar.
+      // 4. Bars for the open (not yet frozen) part.
       const bars = [];
       let bar = null;
-      for (let i = 0; i < n; i += 1) {
-        if (!bar || pos[i] === 0) {
-          bar = { start: grid[i], beats: [], pickup: !bars.length && pos[i] !== 0 };
+      for (let j = 0; j < m; j += 1) {
+        if (!bar || pos[j] === 0) {
+          bar = { start: grid[i0 + j], beats: [], pickup: !F.locked && !bars.length && pos[j] !== 0 };
           bars.push(bar);
         }
-        bar.beats.push(i);
+        bar.beats.push(j);
       }
       // We usually start listening mid-song: a first bar that's at least half
       // there counts as bar 1 rather than a pickup.
@@ -499,7 +551,7 @@
         const tpl = TEMPLATES[s];
         // Inversion: a chord tone (not the root) that is clearly lowest for most of the span.
         const votes = new Map();
-        for (let i = from; i <= to; i += 1) if (beatBass[i] >= 0) votes.set(beatBass[i], (votes.get(beatBass[i]) || 0) + beatBassShare[i]);
+        for (let j = from; j <= to; j += 1) if (beatBass[j] >= 0) votes.set(beatBass[j], (votes.get(beatBass[j]) || 0) + beatBassShare[j]);
         let bassPc = null, top = 0;
         for (const [pc, v] of votes) if (v > top) { top = v; bassPc = pc; }
         const tones = tpl.q.tones.map(([iv]) => (tpl.root + iv) % 12);
@@ -509,33 +561,79 @@
           roman: romanNumeral({ root: tpl.root, q: tpl.q }, key), beats: to - from + 1, state: s
         };
       };
-      let number = 0;
-      const out = bars.map((b) => {
+      let number = F.lastNumber;
+      const open = bars.map((b) => {
         if (!b.pickup) number += 1;
         const chords = [];
         let from = b.beats[0];
         for (let k = 1; k <= b.beats.length; k += 1) {
-          const i = b.beats[k], prev = b.beats[k - 1];
-          if (k === b.beats.length || labels[i] !== labels[prev]) {
+          const j = b.beats[k], prev = b.beats[k - 1];
+          if (k === b.beats.length || labels[j] !== labels[prev]) {
             const c = describe(labels[prev], from, prev);
             if (c) chords.push(c);
-            from = i;
+            from = j;
           }
         }
-        return { number: b.pickup ? 0 : number, start: b.start, pickup: b.pickup, complete: b.beats.length === B, chords };
-      }).filter((b) => !b.pickup || b.chords.length);
+        const lastJ = b.beats[b.beats.length - 1];
+        return {
+          number: b.pickup ? 0 : number, start: b.start, pickup: b.pickup, complete: b.beats.length === B, chords,
+          endT: grid[i0 + lastJ], lastLabel: labels[lastJ], lastJ
+        };
+      });
+
+      // 5. Freeze: complete bars that ended a few seconds ago are final. The
+      //    first freeze waits for ~8 bars so the downbeat and meter can settle.
+      const newest = grid[n - 1];
+      const horizon = Math.max(6, 2 * B * T);
+      const canLock = F.locked || (open.filter((b) => b.complete).length >= 8 && newest - grid[i0] >= 30);
+      let freezeCount = 0;
+      if (canLock) {
+        for (let k = 0; k < open.length - 2; k += 1) {
+          const b = open[k];
+          if ((b.complete || b.pickup || (k === 0 && !F.locked)) && b.endT < newest - horizon) freezeCount = k + 1;
+          else break;
+        }
+      }
+      if (freezeCount) {
+        const done = open.slice(0, freezeCount);
+        const lastDone = done[done.length - 1];
+        let changesDone = 0;
+        for (let j = 1; j <= lastDone.lastJ; j += 1) if (labels[j] !== labels[j - 1]) changesDone += 1;
+        if (F.locked && F.lastLabel >= 0 && m && labels[0] !== F.lastLabel) changesDone += 1;
+        for (const b of done) if (!b.pickup || b.chords.length) F.bars.push({ number: b.number, start: b.start, pickup: b.pickup, complete: b.complete, chords: b.chords, frozen: true });
+        if (F.bars.length > 400) F.bars.splice(0, F.bars.length - 400);
+        F.untilT = lastDone.endT;
+        F.lastLabel = lastDone.lastLabel;
+        F.lastNumber = lastDone.number || F.lastNumber;
+        F.changes += changesDone;
+        F.B = B;
+        F.locked = true;
+      }
+      const rest = open.slice(freezeCount).filter((b) => !b.pickup || b.chords.length)
+        .map((b) => ({ number: b.number, start: b.start, pickup: b.pickup, complete: b.complete, chords: b.chords }));
+      // Chord names are final; Roman numerals are just labels against the key,
+      // so they follow the latest key estimate.
+      const out = F.bars.concat(rest).map((b) => ({ ...b, chords: b.chords.map((c) => {
+        const q = QUALITIES.find((x) => x.id === c.quality);
+        return q ? { ...c, roman: romanNumeral({ root: c.root, q }, key) } : c;
+      }) }));
 
       // Changes per minute, and the repeating loop.
-      let changes = 0;
-      for (let i = 1; i < n; i += 1) if (labels[i] !== labels[i - 1]) changes += 1;
-      const minutes = (grid[n - 1] - grid[0]) / 60;
+      let openChanges = 0;
+      const firstOpen = freezeCount ? open[freezeCount - 1].lastJ + 1 : 0;
+      if (freezeCount && firstOpen < m && labels[firstOpen] !== labels[firstOpen - 1]) openChanges += 1;
+      if (!freezeCount && F.locked && F.lastLabel >= 0 && m && labels[0] !== F.lastLabel) openChanges += 1;
+      for (let j = Math.max(1, firstOpen + 1); j < m; j += 1) if (labels[j] !== labels[j - 1]) openChanges += 1;
+      const minutes = (newest - F.startT) / 60;
       const meterLabel = B === B0 ? (r.meterReady ? r.meter : null) : global.SipraRhythm.METER_LABEL[B];
       return {
         meter: meterLabel, beatsPerBar: B, meterFromChords: B !== B0,
         // Where bar 1 falls, as the position of the newest beat in its bar.
-        lastBeatPos: pos[n - 1], downbeatMoved: pick !== base,
+        lastBeatPos: m ? pos[m - 1] : B - 1,
+        downbeatMoved: F.locked || Boolean(pick.moved),
+        frozenBars: F.bars.length,
         bars: out, loop: this.findLoop(out),
-        changesPerMinute: minutes > 0.2 ? Math.round(changes / minutes) : null,
+        changesPerMinute: minutes > 0.2 ? Math.round((F.changes + openChanges) / minutes) : null,
         currentBar: out.length ? out[out.length - 1].number : 0
       };
     }
