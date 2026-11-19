@@ -179,6 +179,61 @@
     return sm;
   }
 
+  /* Score every chord shape against one chroma vector. The chart (per beat) and
+     the quick detector (first seconds, before the chart exists) both use this,
+     so they agree. `c0` is raw chroma, `bs` the bass chroma under it. */
+  function scoreChords(c0, bs, inKey) {
+    const c = new Float64Array(12);
+    let mean = 0;
+    for (let k = 0; k < 12; k += 1) mean += c0[k];
+    mean /= 12;
+    let norm = 0;
+    for (let k = 0; k < 12; k += 1) { c[k] = c0[k] - mean; norm += c[k] * c[k]; }
+    norm = Math.sqrt(norm);
+    if (norm < 1e-9) return null;
+    for (let k = 0; k < 12; k += 1) c[k] /= norm;
+    let bp = -1, bm = 0, bsum = 0;
+    for (let k = 0; k < 12; k += 1) { bsum += bs[k]; if (bs[k] > bm) { bm = bs[k]; bp = k; } }
+    const bassClear = bsum > 0 && bm / bsum > 0.22;
+    const scores = new Float32Array(TEMPLATES.length);
+    for (let s = 0; s < TEMPLATES.length; s += 1) {
+      const tpl = TEMPLATES[s];
+      let sc = 0;
+      for (let k = 0; k < 12; k += 1) sc += c[k] * tpl.vc[k];
+      sc -= tpl.q.penalty || 0;
+      // The bass is the best clue to the harmony under a loud melody.
+      if (bsum > 0) {
+        sc += 0.22 * (bs[tpl.root] / bsum);
+        if (bassClear && bp !== tpl.root) sc += tpl.q.tones.some(([iv]) => (tpl.root + iv) % 12 === bp) ? 0.02 : -0.08 * (bm / bsum);
+      }
+      if (inKey && inKey[s]) sc += 0.035;
+      scores[s] = sc;
+    }
+    return { scores, bassPc: bassClear ? bp : -1, bassShare: bsum > 0 ? bm / bsum : 0 };
+  }
+
+  // Apply a ½× / 2× tempo fix to a rhythm estimate.
+  function scaleTempo(r, s) {
+    if (!r || !r.ready || s === 1) return r ? { ...r, tempoScale: 1, autoBpm: r.bpm } : r;
+    const out = { ...r, tempoScale: s, autoBpm: r.bpm, bpm: Math.round(r.bpm * s * 10) / 10, beatPeriod: r.beatPeriod / s, pulseBpm: r.pulseBpm * s };
+    const B = r.beatsPerBar || 4, b = r.beats || [];
+    if (s === 0.5) {
+      // Keep every other beat, the ones on even positions in the bar.
+      const n = b.length, keep = [];
+      for (let i = 0; i < n; i += 1) { const pos = (((r.lastBeatPos || 0) - (n - 1 - i)) % B + B) % B; if (pos % 2 === 0) keep.push(b[i]); }
+      out.beats = keep;
+      out.lastBeatTime = keep.length ? keep[keep.length - 1] : r.lastBeatTime;
+      out.lastBeatPos = Math.floor(((r.lastBeatPos || 0) - (((r.lastBeatPos || 0) % 2))) / 2) % B;
+    } else {
+      const mid = [];
+      for (let i = 0; i < b.length; i += 1) { mid.push(b[i]); if (i + 1 < b.length) mid.push((b[i] + b[i + 1]) / 2); }
+      out.beats = mid;
+      out.lastBeatTime = mid.length ? mid[mid.length - 1] : r.lastBeatTime;
+      out.lastBeatPos = ((r.lastBeatPos || 0) * 2) % B;
+    }
+    return out;
+  }
+
   class SipraEngine {
     constructor(sampleRate) {
       this.sr = sampleRate;
@@ -256,6 +311,7 @@
       this.frozen = { locked: false, bars: [], untilT: -Infinity, lastLabel: -1, lastNumber: 0, B: 4, changes: 0, startT: null };
       this.tempoLog = [];
       this.chart = null;
+      this.tempoScale = 1;
       this.tune = { re: 0, im: 0, w: 0, frames: 0 };
       this.tuning = null;
       if (this.mapCents) this.buildPitchMap(0);
@@ -432,33 +488,10 @@
           energy += fr[q].e; cnt += 1;
         }
         const row = j * (S + 1);
-        let mean = 0;
-        for (let k = 0; k < 12; k += 1) mean += c[k];
-        mean /= 12;
-        let norm = 0;
-        for (let k = 0; k < 12; k += 1) { c[k] -= mean; norm += c[k] * c[k]; }
-        norm = Math.sqrt(norm);
-        if (!cnt || norm < 1e-9 || energy / cnt < 0.003) { emit[row + NC] = 1; continue; }
-        for (let k = 0; k < 12; k += 1) c[k] /= norm;
-        let bp = -1, bm = 0, bsum = 0;
-        for (let k = 0; k < 12; k += 1) { bsum += bs[k]; if (bs[k] > bm) { bm = bs[k]; bp = k; } }
-        const bassClear = bsum > 0 && bm / bsum > 0.22;
-        if (bassClear) { beatBass[j] = bp; beatBassShare[j] = bm / bsum; }
-        for (let s = 0; s < S; s += 1) {
-          const tpl = TEMPLATES[s];
-          let sc = 0;
-          for (let k = 0; k < 12; k += 1) sc += c[k] * tpl.vc[k];
-          sc -= tpl.q.penalty || 0;
-          // The bass is the best clue to the harmony under a loud melody:
-          // reward a chord for the bass sitting on its root (or another of its
-          // notes), and mark it down when the clear bass note isn't in it.
-          if (bsum > 0) {
-            sc += 0.22 * (bs[tpl.root] / bsum);
-            if (bassClear && bp !== tpl.root) sc += tpl.q.tones.some(([iv]) => (tpl.root + iv) % 12 === bp) ? 0.02 : -0.08 * (bm / bsum);
-          }
-          if (inKey[s]) sc += 0.035;
-          emit[row + s] = sc;
-        }
+        const sc = cnt && energy / cnt >= 0.003 ? scoreChords(c, bs, inKey) : null;
+        if (!sc) { emit[row + NC] = 1; continue; }
+        if (sc.bassPc >= 0) { beatBass[j] = sc.bassPc; beatBassShare[j] = sc.bassShare; }
+        for (let s = 0; s < S; s += 1) emit[row + s] = sc.scores[s];
         emit[row + NC] = NC_SCORE;
       }
 
@@ -702,33 +735,20 @@
         for (let f = 0; f < frames.length; f += 1) bs += this.recentBass[f][pc];
         bass[pc] = bs;
       }
-      let norm = 0;
-      for (let i = 0; i < 12; i += 1) norm += chroma[i] * chroma[i];
-      norm = Math.sqrt(norm);
-      if (norm < 1e-9) { this.commitChord(null, t); return; }
-      for (let i = 0; i < 12; i += 1) chroma[i] /= norm;
-      let bassPc = -1, bassMax = 0, bassSum = 0;
-      for (let i = 0; i < 12; i += 1) { bassSum += bass[i]; if (bass[i] > bassMax) { bassMax = bass[i]; bassPc = i; } }
-      const bassClear = bassSum > 0 && bassMax / bassSum > 0.22;
-
       const key = this.result && this.result.key && this.result.key.confidence > 0.35 ? this.result.key : null;
       const diatonic = key ? diatonicSet(key) : null;
-      let best = null, second = null;
-      for (const tpl of TEMPLATES) {
-        let s = 0;
-        for (let i = 0; i < 12; i += 1) s += chroma[i] * tpl.v[i];
-        s -= tpl.q.penalty || 0;
-        if (bassClear && bassPc === tpl.root) s += 0.06;
-        if (diatonic) {
-          const tones = tpl.q.tones.map(([iv]) => (tpl.root + iv) % 12);
-          if (tones.every((p) => diatonic.has(p))) s += 0.035;
-        }
-        if (!best || s > best.score) { second = best; best = { ...tpl, score: s }; }
-        else if (!second || s > second.score) second = { ...tpl, score: s };
+      const inKey = diatonic ? TEMPLATES.map((tpl) => tpl.q.tones.every(([iv]) => diatonic.has((tpl.root + iv) % 12))) : null;
+      const sc = scoreChords(chroma, bass, inKey);
+      if (!sc) { this.commitChord(null, t); return; }
+      let bi = 0, si = -1;
+      for (let k = 1; k < TEMPLATES.length; k += 1) {
+        if (sc.scores[k] > sc.scores[bi]) { si = bi; bi = k; } else if (si < 0 || sc.scores[k] > sc.scores[si]) si = k;
       }
-      if (best.score < 0.62) { this.commitChord(null, t); return; }
-      const confidence = clamp((best.score - 0.62) * 2.2 + (best.score - second.score) * 3, 0.05, 0.98);
-      const bassNote = bassClear && bassPc !== best.root && best.q.tones.some(([iv]) => (best.root + iv) % 12 === bassPc) ? bassPc : null;
+      const best = TEMPLATES[bi], bestScore = sc.scores[bi], secondScore = si >= 0 ? sc.scores[si] : 0;
+      if (bestScore < NC_SCORE) { this.commitChord(null, t); return; }
+      const confidence = clamp((bestScore - NC_SCORE) * 2 + (bestScore - secondScore) * 3, 0.05, 0.98);
+      const bassPc = sc.bassPc;
+      const bassNote = bassPc >= 0 && bassPc !== best.root && best.q.tones.some(([iv]) => (best.root + iv) % 12 === bassPc) ? bassPc : null;
       this.commitChord({ root: best.root, q: best.q, bass: bassNote, confidence }, t);
     }
 
@@ -754,8 +774,20 @@
     }
 
     // Heavier estimates: call every 2-4 s.
+    // Manual tempo fix: ½× or 2× of what the tracker hears (it can lock onto
+    // eighth notes or half notes). The chart restarts on the new beat grid.
+    setTempoScale(scale) {
+      const s = scale === 0.5 || scale === 2 ? scale : 1;
+      if (s === this.tempoScale) return;
+      this.tempoScale = s;
+      this.grid = [];
+      this.frozen = { locked: false, bars: [], untilT: -Infinity, lastLabel: -1, lastNumber: 0, B: 4, changes: 0, startT: null };
+      this.tempoLog = [];
+      this.chart = null;
+    }
+
     update() {
-      const r = this.rhythm.estimate();
+      const r = scaleTempo(this.rhythm.estimate(), this.tempoScale || 1);
       if (!r.ready) { this.result = { ready: false, seconds: this.seconds }; return this.result; }
       let key = this.key();
       this.mergeBeats(r.beats, r.beatPeriod);
@@ -810,10 +842,30 @@
         notes: c.q.tones.map(([iv]) => NOTE_NAMES[(c.root + iv) % 12]),
         roman: romanNumeral(c, key), confidence: c.confidence
       } : null;
+      const recentChroma = this.recent.length ? this.recent[this.recent.length - 1] : null;
+      // Once the chart exists it is the one answer: the current chord is the
+      // newest chord in the chart and the recent chords are its last changes,
+      // so the Chord card and the chart always match.
+      const chart = this.chart;
+      if (chart && chart.bars.length) {
+        const flat = [];
+        for (const b of chart.bars.slice(-12)) for (const c of b.chords) {
+          if (flat.length && flat[flat.length - 1].name === c.name) flat[flat.length - 1].beats += c.beats;
+          else flat.push({ ...c });
+        }
+        const toInfo = (c) => {
+          const q = QUALITIES.find((x) => x.id === c.quality) || QUALITIES[0];
+          return { name: c.name, root: c.root, quality: q.id, qualityLabel: q.label, tones: q.tones.map(([iv]) => iv),
+            notes: q.tones.map(([iv]) => NOTE_NAMES[(c.root + iv) % 12]), roman: c.roman || romanNumeral({ root: c.root, q }, key), confidence: 1 };
+        };
+        const lastBar = chart.bars[chart.bars.length - 1];
+        const cur = lastBar.chords.length ? lastBar.chords[lastBar.chords.length - 1] : null;
+        return { current: cur ? toInfo(cur) : null, history: flat.slice(-8).map(toInfo), recentChroma, fromChart: true };
+      }
       return {
         current: describe(this.chord),
         history: this.chordHistory.slice(-8).map((h) => ({ ...describe({ ...h, bass: null, confidence: 1 }), start: h.start, end: h.end })),
-        recentChroma: this.recent.length ? this.recent[this.recent.length - 1] : null
+        recentChroma
       };
     }
   }
@@ -971,6 +1023,13 @@
     }
 
     chordInfo() { return this.main.chordInfo(); }
+
+    /** ½× / 2× tempo fix for the current song (cleared when a new song starts). */
+    setTempoScale(scale) {
+      this.main.setTempoScale(scale);
+      if (this.probe) this.probe.setTempoScale(scale);
+    }
+    get tempoScale() { return this.main.tempoScale || 1; }
   }
 
   SipraEngine.NOTE_NAMES = NOTE_NAMES;

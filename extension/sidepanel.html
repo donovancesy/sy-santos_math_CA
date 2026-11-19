@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="sidepanel.css">
   <link rel="stylesheet" href="sipra-chart.css">
+  <link rel="stylesheet" href="sipra-chordviz.css">
+  <link rel="stylesheet" href="sipra-lyrics.css">
   <script src="theme-init.js"></script>
 </head>
 <body>
@@ -79,10 +81,14 @@
       </div>
       <code class="chord-math" id="chordMath">root + {0, 4, 7} semitones</code>
       <ol class="chord-line" id="chordLine" aria-label="Recent chords"></ol>
+      <div class="chord-viz" id="chordViz" aria-label="The chord on a piano or guitar"></div>
     </section>
 
     <!-- Chord chart: the song's chords bar by bar -->
     <section class="card" id="chartCard" aria-label="Chord chart, bar by bar"></section>
+
+    <!-- Lyrics that follow the song -->
+    <section class="card" id="lyricsCard" aria-label="Lyrics"></section>
 
     <section class="grid" aria-label="Song math">
       <article class="tile">
@@ -90,6 +96,10 @@
         <p class="big"><span id="bpmVal">—</span><small>BPM</small></p>
         <code id="bpmMath">T = 60 / BPM</code>
         <code class="alt" id="bpmAlt"></code>
+        <div class="tempo-fix" role="group" aria-label="Fix the tempo">
+          <button type="button" data-tempo-fix="0.5" title="Halve the tempo (Sipra counted eighth notes)">½×</button>
+          <button type="button" data-tempo-fix="2" title="Double the tempo (Sipra counted half notes)">2×</button>
+        </div>
         <div class="conf" aria-hidden="true"><i id="bpmConf"></i></div>
       </article>
       <article class="tile">
@@ -118,16 +128,6 @@
       </div>
       <canvas id="spectrum" aria-label="Live frequency spectrum"></canvas>
       <canvas id="scope" class="scope" aria-label="Live waveform"></canvas>
-    </section>
-
-    <section class="card note" aria-label="Loudest note right now">
-      <div class="note-big"><span id="noteName">—</span><sup id="noteOct"></sup></div>
-      <div class="note-math">
-        <p><span class="lbl">n</span><code id="noteN">—</code></p>
-        <p><span class="lbl">f</span><code id="noteF">— Hz</code></p>
-        <p><span class="lbl">cents</span><code id="noteCents">—</code></p>
-      </div>
-      <button class="learn note-learn" type="button" data-learn="pitch">Learn</button>
     </section>
 
     <section class="card" aria-label="Session statistics">
@@ -165,6 +165,8 @@
   <script src="sipra-rhythm.js"></script>
   <script src="sipra-engine.js"></script>
   <script src="sipra-chart.js"></script>
+  <script src="sipra-chordviz.js"></script>
+  <script src="sipra-lyrics.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

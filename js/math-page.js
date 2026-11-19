@@ -25,6 +25,22 @@
     history.replaceState(null, "", location.pathname + location.search);
   }
 
+  /* ---------- opened over the Live page ----------
+     The Live page shows this page in a layer so listening isn't interrupted.
+     Links back to the Live page just close that layer. */
+  const embedded = (() => { try { return window.parent !== window && window.parent.location.origin === location.origin; } catch (e) { return false; } })();
+  if (embedded) {
+    document.documentElement.classList.add("in-layer");
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest && e.target.closest("a[href]");
+      if (!a) return;
+      const href = a.getAttribute("href");
+      if (!/^index\.html(#.*)?$/.test(href)) return;
+      e.preventDefault();
+      window.parent.postMessage({ sipra: "close-map", hash: href.replace(/^index\.html/, "") }, location.origin);
+    });
+  }
+
   /* ---------- last song ---------- */
   const last = $("mmLastSong");
   function showLast() {

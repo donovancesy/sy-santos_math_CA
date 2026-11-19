@@ -368,7 +368,10 @@
       const probe = this.octaveEvidence(o, this.trackBeats(o, cand));
       this.debugOctave = probe;
       let doubled = false;
-      if (!this.oomLock && probe && probe.up >= 0.8 && (fps * 60) / (cand / 2) <= 200) { cand /= 2; doubled = true; }
+      // Swung ride cymbals and brushes (jazz ballads) also hit halfway between beats,
+      // so doubling into a fast tempo (over 150) needs stronger evidence.
+      const needUp = (bpmIfDoubled) => (bpmIfDoubled > 150 ? 1.05 : 0.8);
+      if (!this.oomLock && probe && probe.up >= needUp((fps * 60) / (cand / 2)) && (fps * 60) / (cand / 2) <= 200) { cand /= 2; doubled = true; }
 
       // Hysteresis: small changes blend in; octave/large jumps must repeat first.
       if (this.period === null) this.period = cand;
@@ -397,7 +400,7 @@
       }
       // Same check on the tempo we're showing, so it can't get stuck at half speed.
       const held = this.octaveEvidence(o, beats);
-      if (!this.oomLock && held && held.up >= 0.8 && (fps * 60) / (this.period / 2) <= 200) {
+      if (!this.oomLock && held && held.up >= needUp((fps * 60) / (this.period / 2)) && (fps * 60) / (this.period / 2) <= 200) {
         this.period /= 2;
         this.pending = null; this.pendingCount = 0;
         beats = this.trackBeats(o, this.period);

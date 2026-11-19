@@ -25,7 +25,7 @@
     bpm: $("liveBpm"), bpmMath: $("liveBpmMath"), bpmConf: $("liveBpmConf"),
     key: $("liveKey"), keyMath: $("liveKeyMath"), keyConf: $("liveKeyConf"),
     meter: $("liveMeter"), feel: $("liveFeel"), pulse: $("livePulse"), beats: $("liveBeats"),
-    note: $("liveNote"), oct: $("liveOct"), noteMath: $("liveNoteMath"),
+    tempoFixNote: $("liveTempoFix"),
     spectrum: $("liveSpectrum"), scope: $("liveScope"), peakHz: $("livePeakHz"),
     save: $("liveSaveBtn"),
     linkBtn: $("spotifyLinkBtn"), linkLabel: $("spotifyLinkLabel"), linkOpen: $("spotifyLinkOpen"), panel: $("spotifyPanel"),
@@ -38,6 +38,50 @@
   const chartView = window.SipraChart && $("liveChart")
     ? window.SipraChart.mount($("liveChart"), { onCopy: (_t, ok) => toast(ok ? "Chart copied. Paste it anywhere." : "Couldn't copy the chart.") })
     : null;
+
+  // The chord on a piano or guitar (js/sipra-chordviz.js).
+  const chordViz = window.SipraChordViz && $("liveChordViz") ? window.SipraChordViz.mount($("liveChordViz")) : null;
+  // Synced lyrics (js/sipra-lyrics.js): need the song name and time, which
+  // come from a linked Spotify account.
+  if (window.SipraLyrics && $("liveLyrics")) {
+    window.SipraLyrics.mount($("liveLyrics"), {
+      getTrack: () => {
+        const t = window.SipraSpotify && window.SipraSpotify.state.track;
+        if (!t) return null;
+        const sp = spotifyPosition();
+        return { title: t.title, artist: t.artist, album: t.album, duration: t.duration, position: sp ? sp.pos : null, playing: sp ? sp.playing : false };
+      },
+      noTrackHint: "Lyrics follow the song once Sipra knows its name and time: tap Link Spotify account below."
+    });
+  }
+
+  // Tempo fix: ½× or 2× when Sipra counts eighth notes or half notes. Remembered
+  // per song when the song name is known.
+  const FIX_KEY = "sipra-tempo-fix";
+  const readFixes = () => { try { return JSON.parse(localStorage.getItem(FIX_KEY) || "{}"); } catch (e) { return {}; } };
+  function applyFix(scale, remember) {
+    if (!live.engine) return;
+    live.engine.setTempoScale(scale);
+    if (remember && live.trackTitle) {
+      const fixes = readFixes();
+      if (scale === 1) delete fixes[live.trackTitle]; else fixes[live.trackTitle] = scale;
+      try { localStorage.setItem(FIX_KEY, JSON.stringify(fixes)); } catch (e) {}
+    }
+    live.result = null; live.chordSig = ""; live.lastBeat = -1;
+    if (chartView) chartView.clear();
+    renderResult();
+  }
+  function restoreFix() {
+    if (!live.engine || !live.trackTitle) return;
+    const s = readFixes()[live.trackTitle];
+    if (s && live.engine.tempoScale !== s) live.engine.setTempoScale(s);
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("[data-tempo-fix]");
+    if (!b || !live.engine) return;
+    const s = Number(b.dataset.tempoFix);
+    applyFix(live.engine.tempoScale === s ? 1 : s, true);
+  });
 
   let colors = null;
   function readColors() {
@@ -94,6 +138,9 @@
       window.MBMApp.addTrack({ name, duration: Math.round(prev.seconds), bpm: prev.bpm, key: prev.key, timeSignature: prev.meter });
     }
     const label = `${prev.bpm % 1 ? prev.bpm.toFixed(1) : prev.bpm} BPM · ${NOTE[prev.key.tonicPc]} ${prev.key.mode}`;
+    // A new song found from a gap starts at its top; otherwise use the Spotify time if known.
+    { const sp = spotifyPosition(); live.joinedAt = reason === "auto" || reason === "replay" ? 0 : sp ? sp.pos : null; }
+    if (reason === "replay") toast("Song restarted: the chart starts over.");
     if (reason === "auto") toast(`New song detected. Saved the last one (${label}) to Stats.`);
     else if (reason === "manual") toast(`Starting fresh. Saved the last song (${label}) to Stats.`);
     live.saved = false;
@@ -212,6 +259,7 @@
       freq: new Float32Array(analyser.frequencyBinCount), time: new Float32Array(analyser.fftSize),
       startedAt: performance.now(), result: null, chordSig: "", lastBeat: -1, silent: 0, peakLevel: 0, saved: false
     });
+    restoreFix(); // a tempo fix saved for this song applies right away
     stream.getAudioTracks()[0].addEventListener("ended", stop);
     el.tabBtn.hidden = true; el.micBtn.hidden = true; el.stopBtn.hidden = false; el.save.disabled = true;
     if (el.newSongBtn) el.newSongBtn.hidden = false;
@@ -220,6 +268,7 @@
       ? "Listening. Numbers appear after ~6 s and get steadier as the song plays. Sipra notices when the next song starts."
       : "Listening through the mic. Keep it near the speaker. On Windows you can pick <strong>Stereo Mix</strong> as the input to hear the computer directly.");
     if (kind === "mic") fillInputs(); else if (el.input) el.input.hidden = true;
+    { const sp = spotifyPosition(); live.joinedAt = sp ? sp.pos : null; live.lastSpPos = sp ? sp.pos : null; }
     renderResult(); renderChord(null); renderSongNo();
     if (chartView) chartView.clear();
   }
@@ -292,7 +341,7 @@
     renderResult();
     if (chartView) {
       const t = SP && SP.state.track;
-      chartView.update(r, { title: live.trackTitle || (t && t.title) || "", artist: t ? t.artist : "" });
+      chartView.update(r, { title: live.trackTitle || (t && t.title) || "", artist: t ? t.artist : "", joinedAt: live.joinedAt });
     }
     renderSongMath();
     // Lessons on the Math map page use the last song you listened to.
@@ -310,8 +359,11 @@
       return;
     }
     const T = 60 / r.bpm;
+    const scale = r.tempoScale || 1;
+    document.querySelectorAll("[data-tempo-fix]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.tempoFix) === scale)));
+    if (el.tempoFixNote) el.tempoFixNote.textContent = scale === 1 ? "sounds off? fix it" : `heard ${Math.round(r.autoBpm)} → ${scale === 0.5 ? "½" : "2"}×`;
     el.bpm.textContent = r.bpm % 1 ? r.bpm.toFixed(1) : String(r.bpm);
-    el.bpmMath.textContent = `${r.compound ? "♩. " : ""}T = 60/${Math.round(r.bpm)} = ${T.toFixed(3)} s${r.bpm >= 140 ? ` · or half-time ${(r.bpm / 2).toFixed(0)}` : r.bpm < 80 ? ` · or double-time ${(r.bpm * 2).toFixed(0)}` : ""}`;
+    el.bpmMath.textContent = `${r.compound ? "♩. " : ""}T = 60/${Math.round(r.bpm)} = ${T.toFixed(3)} s`;
     el.bpmConf.style.width = `${Math.round(r.bpmConfidence * 100)}%`;
     // After a key change, show the key we're in now (and where it came from).
     const k = r.keyNow || r.key;
@@ -333,6 +385,7 @@
     const sig = c ? `${c.name}|${c.roman}|${info.history.length}` : "none";
     if (sig === live.chordSig) return;
     live.chordSig = sig;
+    if (chordViz) chordViz.show(c ? { root: c.root, quality: c.quality, tones: c.tones, name: c.name } : null);
     if (!c) {
       el.chord.textContent = "—"; el.roman.textContent = "—"; el.chordNotes.textContent = "listening…";
       el.chordMath.textContent = "root + {0, 4, 7} semitones";
@@ -400,6 +453,7 @@
         live.trackId = t.id;
       }
       live.trackTitle = t.title;
+      restoreFix();
     });
     SP.init();
   }
@@ -409,6 +463,66 @@
     const p = t.position + (t.playing ? (Date.now() - t.at) / 1000 : 0);
     return { pos: clamp(p, 0, t.duration || p), dur: t.duration, playing: t.playing };
   }
+
+  /* ---------- Math map, opened over this page ----------
+     Leaving the page would end the screen/tab audio share, so the Math map
+     (math.html) opens in a full-screen layer and listening carries on below. */
+  let mapLayer = null, mapFrame = null, mapReturnFocus = null;
+  function openMap(href) {
+    if (!mapLayer) {
+      mapLayer = document.createElement("div");
+      mapLayer.className = "map-layer";
+      mapLayer.setAttribute("role", "dialog");
+      mapLayer.setAttribute("aria-modal", "true");
+      mapLayer.setAttribute("aria-label", "Math map");
+      mapLayer.innerHTML = `<div class="map-bar"><span class="map-live" id="mapLive">Listening keeps going in the background</span><button class="btn btn-primary map-close" type="button">Back to listening</button></div><iframe title="Math map" class="map-frame" allow="autoplay"></iframe>`;
+      document.body.append(mapLayer);
+      mapFrame = mapLayer.querySelector("iframe");
+      mapLayer.querySelector(".map-close").addEventListener("click", () => closeMap());
+    }
+    const target = new URL(href, location.href);
+    const cur = mapFrame.getAttribute("src");
+    if (!cur) mapFrame.src = target.pathname.split("/").pop() + target.hash;
+    else if (target.hash) { try { mapFrame.contentWindow.location.hash = target.hash; } catch (e) { mapFrame.src = "math.html" + target.hash; } }
+    mapReturnFocus = document.activeElement;
+    mapLayer.hidden = false;
+    document.body.classList.add("map-open");
+    updateMapBar();
+  }
+  function closeMap(hash) {
+    if (!mapLayer || mapLayer.hidden) return;
+    mapLayer.hidden = true;
+    document.body.classList.remove("map-open");
+    if (hash) { const t = document.querySelector(hash); if (t) t.scrollIntoView({ block: "start" }); }
+    else if (mapReturnFocus && mapReturnFocus.focus) mapReturnFocus.focus();
+  }
+  function updateMapBar() {
+    const n = $("mapLive");
+    if (!n || !mapLayer || mapLayer.hidden) return;
+    const r = live.result && live.result.ready ? live.result : null;
+    n.textContent = live.stream ? (r ? `Still listening · ${Math.round(r.bpm)} BPM · ${NOTE[(r.keyNow || r.key).tonicPc]} ${(r.keyNow || r.key).mode}` : "Still listening…") : "Not listening right now";
+  }
+  setInterval(updateMapBar, 1500);
+  setInterval(() => {
+    const sp = spotifyPosition();
+    if (!sp || !live.engine) { live.lastSpPos = sp ? sp.pos : null; return; }
+    if (Number.isFinite(live.lastSpPos) && live.lastSpPos > 12 && sp.pos < 4) { live.engine.newSong("replay"); live.joinedAt = 0; if (chartView) chartView.clear(); }
+    live.lastSpPos = sp.pos;
+  }, 500);
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest && e.target.closest("a[href]");
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    const href = a.getAttribute("href");
+    if (!/^math.html(#.*)?$/.test(href)) return;
+    e.preventDefault();
+    openMap(href);
+  });
+  // The Math map asks to close (its "Back to listening" / Live links).
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.sipra !== "close-map") return;
+    closeMap(e.data.hash || "");
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && mapLayer && !mapLayer.hidden && (!el.overlay || el.overlay.hidden)) closeMap(); });
 
   /* ---------- "The math in this song" cards ---------- */
   const sm = { tempo: $("smTempo"), key: $("smKey"), chord: $("smChord"), loop: $("smLoop"), spectrum: $("smSpectrum"), stats: $("smStats") };
@@ -573,22 +687,6 @@
     for (let i = 0; i < span; i += 1) { const x = (i / (span - 1)) * w, y = h / 2 - (d[s + i] / pk) * (h * 0.4); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
     ctx.stroke();
   }
-  function updateNote(now) {
-    if (now - live.lastNoteAt < 150) return;
-    live.lastNoteAt = now;
-    const f = live.freq, binHz = live.ctx.sampleRate / live.analyser.fftSize;
-    const lo = Math.floor(70 / binHz), hi = Math.ceil(1200 / binHz);
-    let best = -1, bestDb = -Infinity;
-    for (let i = lo; i <= hi; i += 1) if (f[i] > bestDb) { bestDb = f[i]; best = i; }
-    if (best < 1 || bestDb < -62) { live.note = null; el.note.textContent = "—"; el.oct.textContent = ""; el.noteMath.textContent = "—"; return; }
-    const a = f[best - 1], b = f[best], c = f[best + 1];
-    const hz = (best + clamp((a - c) / (2 * (a - 2 * b + c) || 1), -0.5, 0.5)) * binHz;
-    const exact = 12 * Math.log2(hz / 440), n = Math.round(exact), cents = Math.round((exact - n) * 100), midi = 69 + n;
-    live.note = { f: hz, n, cents, name: NOTE[((midi % 12) + 12) % 12], octave: Math.floor(midi / 12) - 1 };
-    el.note.textContent = live.note.name;
-    el.oct.textContent = String(live.note.octave);
-    el.noteMath.innerHTML = `${hz.toFixed(1)} Hz → n = ${n} (${cents >= 0 ? "+" : ""}${cents}¢) → 440·2<sup>${n}/12</sup> = ${(440 * Math.pow(2, n / 12)).toFixed(1)} Hz`;
-  }
   function updateBeat() {
     const r = live.result;
     if (!r || !r.ready || live.offset === null) return;
@@ -650,7 +748,6 @@
         el.level.style.width = `${(lvl * 100).toFixed(1)}%`;
         el.peak.style.left = `${(live.peakLevel * 100).toFixed(1)}%`;
         el.db.textContent = `${db > -90 ? db.toFixed(1) : "—"} dBFS`;
-        updateNote(now);
         updateBeat();
         if (live.engine) renderChord(live.engine.chordInfo());
         const secs = (performance.now() - live.startedAt) / 1000;

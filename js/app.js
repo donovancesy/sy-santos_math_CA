@@ -2464,11 +2464,164 @@ function tc(key, alpha) {
         playSine(freqForN(state.pitchN), `${parts.name}${parts.octave}`);
       }
 
+      /* ---------- Rhythm lab ----------
+         Two modes on one scheduler:
+         - Polyrhythm: A against B pulses (2–12 each), lining up every LCM(A, B) steps.
+         - Meter: any time signature (2/4 … 12/8, or n/d), a step grid you can edit
+           (off → hit → accent), grouped the usual way (6/8 = 3 + 3, 7/8 = 2 + 2 + 3).
+         Every tick goes through one gain node, so Stop silences at once. */
+      const METER_GROUPS = {
+        "2/4": [2], "3/4": [3], "4/4": [4], "5/4": [3, 2], "6/8": [3, 3], "7/8": [2, 2, 3],
+        "9/8": [3, 3, 3], "12/8": [3, 3, 3, 3], "5/8": [3, 2], "3/8": [3], "6/4": [3, 3], "7/4": [4, 3]
+      };
+      function groupsFor(n, d) {
+        const named = METER_GROUPS[`${n}/${d}`];
+        if (named) return named;
+        // Compound feel for /8 and /16 counts divisible by 3; otherwise 2s and 3s.
+        if ((d === 8 || d === 16) && n % 3 === 0 && n > 3) return Array(n / 3).fill(3);
+        if (d === 4 || d === 2) return [n];
+        // Odd counts: 2s then a 3 at the end (11/16 = 2+2+2+2+3); even counts: 2s.
+        return n % 2 ? [...Array((n - 3) / 2).fill(2), 3] : Array(n / 2).fill(2);
+      }
+      function defaultPattern(n, groups) {
+        const p = Array(n).fill(1);
+        let at = 0;
+        groups.forEach((g) => { if (at < n) p[at] = 2; at += g; });
+        return p;
+      }
+      Object.assign(poly, { mode: "poly", meterN: 4, meterD: 4, pattern: [2, 1, 1, 1], groups: [4], bus: null, live: new Set() });
+
+      /* Famous grooves: drum patterns on a step grid, with the math in each.
+         beats = bar length in quarter-note beats (the BPM counts quarters).
+         swing = how far (0–1 of a step) the off steps are pushed late. */
+      const GROOVES = {
+        rock: { name: "Rock", sig: "4/4", steps: 16, beats: 4, rows: [
+            { label: "Hi-hat", sound: "hat", p: "x.x.x.x.x.x.x.x." },
+            { label: "Snare", sound: "snare", p: "....x.......x..." },
+            { label: "Kick", sound: "kick", p: "x.......x.x....." }],
+          math: ["16 steps = 4 beats × 4 sixteenths", "Backbeat: snare on beats 2 and 4 → steps 5 and 13", "Hi-hat eighths: 16 / 2 = 8 hits"],
+          blurb: "The backbeat: snare on 2 and 4, eighth notes on the hi-hat." },
+        funk: { name: "Funk", sig: "4/4", steps: 16, beats: 4, rows: [
+            { label: "Hi-hat", sound: "hat", p: "xxxxxxxxxxxxxxxx" },
+            { label: "Snare", sound: "snare", p: "....x..g.g..x..g" },
+            { label: "Kick", sound: "kick", p: "x..x..x...x..x.." }],
+          math: ["Every sixteenth on the hi-hat: step = T / 4", "Kick lands off the beat (steps 4, 7, 14): syncopation", "Small hits = ghost notes, quieter snare"],
+          blurb: "Sixteenth notes and a kick that dodges the beat." },
+        disco: { name: "Disco", sig: "4/4", steps: 16, beats: 4, rows: [
+            { label: "Open hat", sound: "openhat", p: "..x...x...x...x." },
+            { label: "Clap", sound: "clap", p: "....x.......x..." },
+            { label: "Kick", sound: "kick", p: "x...x...x...x..." }],
+          math: ["Four on the floor: kick every 4 steps → steps 1 + 4k", "Open hat on the off-beats: steps 3 + 4k", "Kick and hat never meet: they're offset by half a beat"],
+          blurb: "Kick on every beat, hi-hat in between." },
+        hiphop: { name: "Hip-hop", sig: "4/4", steps: 16, beats: 4, swing: 0.18, rows: [
+            { label: "Hi-hat", sound: "hat", p: "x.x.x.x.x.x.x.x." },
+            { label: "Snare", sound: "snare", p: "....x.......x..." },
+            { label: "Kick", sound: "kick", p: "x.....x...x....." }],
+          math: ["Boom bap: kick on 1, the 'and' of 2, and 3", "Swung sixteenths: every second step comes 18% of a step late", "Snare backbeat on steps 5 and 13"],
+          blurb: "Boom bap, with a lazy swing on the off steps." },
+        reggae: { name: "Reggae", sig: "4/4", steps: 16, beats: 4, rows: [
+            { label: "Skank", sound: "chord", p: "..x...x...x...x." },
+            { label: "Hi-hat", sound: "hat", p: "x.x.x.x.x.x.x.x." },
+            { label: "Rim", sound: "rim", p: "........x......." },
+            { label: "Kick", sound: "kick", p: "........x......." }],
+          math: ["One drop: kick and rim only on beat 3 → step 9", "Guitar skank on the off-beats: steps 3, 7, 11, 15 = 3 + 4k", "Beat 1 is left empty: the 'drop'"],
+          blurb: "The one drop: nothing on beat 1, everything on beat 3." },
+        swing: { name: "Jazz swing", sig: "4/4", steps: 12, beats: 4, rows: [
+            { label: "Ride", sound: "ride", p: "x..x.xx..x.x" },
+            { label: "Hi-hat", sound: "pedal", p: "...x.....x.." },
+            { label: "Kick", sound: "softkick", p: "x..x..x..x.." }],
+          math: ["Each beat splits into 3 (triplets): 4 × 3 = 12 steps", "Swing eighths are long–short, 2 : 1: the 'and' lands at ⅔ of the beat", "Ride: ding, ding-a, ding, ding-a · hi-hat on 2 and 4"],
+          blurb: "Spang-a-lang: the ride cymbal's swung triplet feel." },
+        bossa: { name: "Bossa nova", sig: "4/4", steps: 16, beats: 4, rows: [
+            { label: "Shaker", sound: "hat", p: "x.x.x.x.x.x.x.x." },
+            { label: "Clave", sound: "rim", p: "x..x..x...x..x.." },
+            { label: "Bass", sound: "kick", p: "x..xx..xx..xx..x" }],
+          math: ["Bossa clave gaps: 3 + 3 + 4 + 3 + 3 = 16", "Bass: dotted quarter + eighth (3 + 1 = 4 steps), twice per half bar", "Five clave hits spread unevenly over 16: the off-balance is the groove"],
+          blurb: "Brazil's soft samba: the clave pattern on the rim." },
+        clave: { name: "Son clave", sig: "4/4", steps: 16, beats: 4, rows: [
+            { label: "Clave", sound: "clave", p: "x..x..x...x.x..." },
+            { label: "Conga", sound: "rim", p: "......x.......x." },
+            { label: "Bass", sound: "kick", p: "...x..x....x..x." }],
+          math: ["3-2 son clave gaps: 3 + 3 + 4 + 2 + 4 = 16", "First half = tresillo, 3 + 3 + 2 = 8: 3 hits spread as evenly as possible over 8 (Euclidean E(3, 8))", "Second half: 2 hits on beats 2 and 3"],
+          blurb: "The key pattern of salsa and son, 3 side then 2 side." },
+        afro: { name: "Afro-Cuban 6/8", sig: "12/8", steps: 12, beats: 6, rows: [
+            { label: "Bell", sound: "bell", p: "x.x.xx.x.x.x" },
+            { label: "Shaker", sound: "hat", p: "xxxxxxxxxxxx" },
+            { label: "Kick", sound: "kick", p: "x.....x....." }],
+          math: ["Bell: 7 strokes spread as evenly as possible over 12 = E(7, 12)", "Its gaps 2 + 2 + 1 + 2 + 2 + 2 + 1 are the major scale's steps", "Kick on the dotted quarters: every 6 steps"],
+          blurb: "The bembé bell: West African 12/8 time." }
+      };
+      poly.groove = "rock";
+
+      // Drum sounds, synthesized, all through the lab's bus (so Stop cuts them).
+      let noiseBuf = null;
+      function noise(ctx) {
+        if (noiseBuf && noiseBuf.sampleRate === ctx.sampleRate) return noiseBuf;
+        noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i += 1) d[i] = Math.random() * 2 - 1;
+        return noiseBuf;
+      }
+      function drum(sound, time, level = 1) {
+        const ctx = state.ctx;
+        if (!ctx || !poly.bus) return;
+        const out = ctx.createGain();
+        out.connect(poly.bus);
+        const env = (g, peak, decay) => { g.gain.setValueAtTime(0.0001, time); g.gain.exponentialRampToValueAtTime(peak * level, time + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, time + decay); };
+        const tone = (type, f0, f1, peak, decay) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = type; o.frequency.setValueAtTime(f0, time);
+          if (f1) o.frequency.exponentialRampToValueAtTime(f1, time + decay * 0.6);
+          env(g, peak, decay); o.connect(g).connect(out); o.start(time); o.stop(time + decay + 0.02);
+          poly.live.add(o); o.onended = () => { poly.live.delete(o); try { o.disconnect(); g.disconnect(); } catch (e) {} };
+        };
+        const hiss = (hp, peak, decay, bp) => {
+          const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+          s.buffer = noise(ctx); f.type = bp ? "bandpass" : "highpass"; f.frequency.value = hp; if (bp) f.Q.value = 1.2;
+          env(g, peak, decay); s.connect(f).connect(g).connect(out); s.start(time); s.stop(time + decay + 0.02);
+          poly.live.add(s); s.onended = () => { poly.live.delete(s); try { s.disconnect(); f.disconnect(); g.disconnect(); } catch (e) {} };
+        };
+        switch (sound) {
+          case "kick": tone("sine", 140, 45, 0.5, 0.32); break;
+          case "softkick": tone("sine", 110, 45, 0.16, 0.25); break;
+          case "snare": hiss(1500, 0.22, 0.16); tone("triangle", 220, 160, 0.12, 0.09); break;
+          case "ghost": hiss(1800, 0.06, 0.08); break;
+          case "clap": hiss(1100, 0.2, 0.12, true); hiss(1100, 0.12, 0.2, true); break;
+          case "hat": hiss(7000, 0.07, 0.04); break;
+          case "openhat": hiss(6500, 0.08, 0.22); break;
+          case "pedal": hiss(5000, 0.06, 0.06); break;
+          case "ride": hiss(5500, 0.05, 0.45); tone("sine", 3150, 0, 0.025, 0.4); break;
+          case "rim": tone("square", 1700, 0, 0.05, 0.03); break;
+          case "clave": tone("sine", 2500, 0, 0.16, 0.06); break;
+          case "bell": tone("sine", 1250, 0, 0.12, 0.2); tone("sine", 2510, 0, 0.04, 0.12); break;
+          case "chord": [440, 554.37, 659.25].forEach((f) => tone("square", f, 0, 0.018, 0.09)); break;
+          default: tone("sine", 880, 0, 0.03, 0.08);
+        }
+        setTimeout(() => { try { out.disconnect(); } catch (e) {} }, Math.max(0, (time - ctx.currentTime + 0.8) * 1000));
+      }
+
+      function setGroove(id) {
+        if (!GROOVES[id]) return;
+        const wasPlaying = poly.playing;
+        if (wasPlaying) stopPoly();
+        poly.groove = id;
+        updatePolyUI();
+        if (wasPlaying) startPoly();
+      }
+
+      function polySteps() { return poly.mode === "meter" ? poly.meterN : poly.mode === "groove" ? GROOVES[poly.groove].steps : lcm(poly.x, poly.y); }
+      function polyCycleDuration() {
+        const beat = 60 / state.bpm; // BPM counts quarter notes
+        if (poly.mode === "groove") return GROOVES[poly.groove].beats * beat;
+        return poly.mode === "meter" ? poly.meterN * (4 / poly.meterD) * beat : beat * 4;
+      }
+
       function setPolyRatio(x, y, { announce = false } = {}) {
-        const nextX = clamp(Math.round(x), 2, 9);
-        const nextY = clamp(Math.round(y), 2, 9);
+        const nextX = clamp(Math.round(x), 2, 12);
+        const nextY = clamp(Math.round(y), 2, 12);
         if (nextX === nextY) {
           showToast("Choose two different pulse counts.", "error");
+          updatePolyUI();
           return;
         }
         const wasPlaying = poly.playing;
@@ -2477,39 +2630,98 @@ function tc(key, alpha) {
         poly.y = nextY;
         updatePolyUI();
         if (wasPlaying) startPoly();
-        if (announce) showToast(`${nextX} against ${nextY}: the grid resolves every ${lcm(nextX, nextY)} steps.`);
+        if (announce) showToast(`${nextX} against ${nextY}: the grid lines up every ${lcm(nextX, nextY)} steps.`);
+      }
+
+      function setLabMeter(n, d) {
+        const nn = clamp(Math.round(n), 2, 16), dd = [2, 4, 8, 16].includes(Number(d)) ? Number(d) : 4;
+        const wasPlaying = poly.playing;
+        if (wasPlaying) stopPoly();
+        poly.meterN = nn; poly.meterD = dd;
+        poly.groups = groupsFor(nn, dd);
+        poly.pattern = defaultPattern(nn, poly.groups);
+        updatePolyUI();
+        if (wasPlaying) startPoly();
+      }
+
+      function setRhythmMode(mode) {
+        if (mode !== "poly" && mode !== "meter" && mode !== "groove") return;
+        const wasPlaying = poly.playing;
+        if (wasPlaying) stopPoly();
+        poly.mode = mode;
+        updatePolyUI();
+        if (wasPlaying) startPoly();
       }
 
       function updatePolyUI() {
         if (!el.polyRows) return;
-        const x = poly.x;
-        const y = poly.y;
-        const steps = lcm(x, y);
-        const beatInterval = 60 / state.bpm;
-        const cycleDuration = beatInterval * 4;
+        const steps = polySteps();
+        const cycleDuration = polyCycleDuration();
         const stepDuration = cycleDuration / steps;
         poly.cycleDur = cycleDuration;
-        if (el.lcmValue) el.lcmValue.textContent = String(steps);
-        if (el.lcmCaption) el.lcmCaption.textContent = `LCM(${x}, ${y}) = ${steps}`;
-        if (el.polyCycleTime) el.polyCycleTime.textContent = `Cycle = 4 beats · ${cycleDuration.toFixed(3)} s`;
-        if (el.polyStepTime) el.polyStepTime.textContent = `Step = ${stepDuration.toFixed(3)} s`;
-        if (el.seqTitle) el.seqTitle.innerHTML = `<strong>${x} : ${y}</strong> · ${x} against ${y}`;
+        const meter = poly.mode === "meter";
+        $$("[data-rmode]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.rmode === poly.mode)));
+        const groove = poly.mode === "groove";
+        const pc = $("#polyControls"), mc = $("#meterControls"), gc = $("#grooveControls");
+        if (pc) pc.hidden = poly.mode !== "poly";
+        if (mc) mc.hidden = !meter;
+        if (gc) gc.hidden = !groove;
+        const axis = $(".seq-axis"), legend = $(".seq-legend");
+        if (axis) axis.hidden = meter || groove;
+        if (legend) legend.innerHTML = meter
+          ? '<span class="legend-item"><i class="legend-swatch"></i>accent</span><span class="legend-item"><i class="legend-swatch soft"></i>hit</span><span class="legend-item"><i class="legend-swatch outline"></i>now</span>'
+          : '<span class="legend-item"><i class="legend-swatch"></i>A</span><span class="legend-item"><i class="legend-swatch violet"></i>B</span><span class="legend-item"><i class="legend-swatch outline"></i>now</span>';
+        if (groove) {
+          const g = GROOVES[poly.groove];
+          if (legend) legend.innerHTML = '<span class="legend-item"><i class="legend-swatch"></i>hit</span><span class="legend-item"><i class="legend-swatch soft"></i>ghost note</span><span class="legend-item"><i class="legend-swatch outline"></i>now</span>';
+          if (el.lcmValue) el.lcmValue.textContent = String(g.steps);
+          if (el.lcmCaption) el.lcmCaption.textContent = `${g.name} · ${g.sig}`;
+          if (el.polyCycleTime) el.polyCycleTime.textContent = `Bar = ${g.beats} × 60/${formatBpm(state.bpm)} = ${cycleDuration.toFixed(3)} s`;
+          if (el.polyStepTime) el.polyStepTime.textContent = `Step = bar / ${g.steps} = ${stepDuration.toFixed(3)} s${g.swing ? ` · swing +${Math.round(g.swing * 100)}%` : ""}`;
+          if (el.seqTitle) el.seqTitle.innerHTML = `<strong>${g.name}</strong> · ${g.blurb}`;
+          if (el.seqCaption) el.seqCaption.textContent = "";
+          const gm = $("#grooveMath");
+          if (gm) gm.innerHTML = g.math.map((m) => `<li>${m}</li>`).join("");
+          $$("[data-groove]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.groove === poly.groove)));
+        } else if (meter) {
+          const sig = `${poly.meterN}/${poly.meterD}`, unit = poly.meterD === 4 ? "quarter" : poly.meterD === 8 ? "eighth" : poly.meterD === 2 ? "half" : "sixteenth";
+          if (el.lcmValue) el.lcmValue.textContent = String(poly.meterN);
+          if (el.lcmCaption) el.lcmCaption.textContent = `${sig} = ${poly.groups.join(" + ")}`;
+          if (el.polyCycleTime) el.polyCycleTime.textContent = `Bar = ${poly.meterN} × (4/${poly.meterD}) × 60/${formatBpm(state.bpm)} = ${cycleDuration.toFixed(3)} s`;
+          if (el.polyStepTime) el.polyStepTime.textContent = `One ${unit} note = ${stepDuration.toFixed(3)} s`;
+          if (el.seqTitle) el.seqTitle.innerHTML = `<strong>${sig}</strong> · ${poly.meterN} ${unit} notes, grouped ${poly.groups.join("+")}`;
+          if (el.seqCaption) el.seqCaption.textContent = "Tap a step: off → hit → accent.";
+          $$("[data-meter]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.meter === sig)));
+          const num = $("#meterNum"), den = $("#meterDen");
+          if (num && document.activeElement !== num) num.value = String(poly.meterN);
+          if (den) den.value = String(poly.meterD);
+        } else {
+          if (el.lcmValue) el.lcmValue.textContent = String(steps);
+          if (el.lcmCaption) el.lcmCaption.textContent = `LCM(${poly.x}, ${poly.y}) = ${steps}`;
+          if (el.polyCycleTime) el.polyCycleTime.textContent = `Cycle = 4 beats · ${cycleDuration.toFixed(3)} s`;
+          if (el.polyStepTime) el.polyStepTime.textContent = `Step = ${stepDuration.toFixed(3)} s`;
+          if (el.seqTitle) el.seqTitle.innerHTML = `<strong>${poly.x} : ${poly.y}</strong> · ${poly.x} against ${poly.y}`;
+          if (el.seqCaption) el.seqCaption.textContent = `Step = ${stepDuration.toFixed(3)} s`;
+          el.ratioButtons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(Number(button.dataset.x) === poly.x && Number(button.dataset.y) === poly.y));
+          });
+          const a = $("#polyA"), b = $("#polyB");
+          if (a && document.activeElement !== a) a.value = String(poly.x);
+          if (b && document.activeElement !== b) b.value = String(poly.y);
+        }
         if (el.seqStepReadout) el.seqStepReadout.textContent = `step — / ${steps}`;
-        if (el.seqCaption) el.seqCaption.textContent = `Step = ${stepDuration.toFixed(3)} s`;
         if (el.polyTempoLabel) el.polyTempoLabel.textContent = `Tempo-locked · ${formatBpm(state.bpm)} BPM`;
-        el.ratioButtons.forEach((button) => {
-          button.setAttribute("aria-pressed", String(Number(button.dataset.x) === x && Number(button.dataset.y) === y));
-        });
         renderPolyGrid(steps);
       }
 
       function renderPolyGrid(steps) {
         if (!el.polyRows) return;
         el.polyRows.innerHTML = "";
-        const rows = [
-          { key: "a", letter: "A", count: poly.x, color: "cyan" },
-          { key: "b", letter: "B", count: poly.y, color: "violet" }
-        ];
+        const rows = poly.mode === "groove"
+          ? GROOVES[poly.groove].rows.map((r, i) => ({ key: "g" + i, letter: r.label, count: [...r.p].filter((c) => c !== ".").length, groove: r.p }))
+          : poly.mode === "meter"
+          ? [{ key: "m", letter: "♩", count: poly.meterN, meter: true }]
+          : [{ key: "a", letter: "A", count: poly.x }, { key: "b", letter: "B", count: poly.y }];
         rows.forEach((row) => {
           const rowEl = document.createElement("div");
           rowEl.className = "poly-row";
@@ -2517,18 +2729,53 @@ function tc(key, alpha) {
           const label = document.createElement("div");
           label.className = "poly-row-label";
           label.innerHTML = `<span class="row-letter">${row.letter}</span><span class="row-count"><strong>${row.count}</strong></span>`;
-          const cells = document.createElement("div");
+          const cells = document.createElement(row.meter ? "div" : "div");
           cells.className = "poly-cells";
           cells.style.setProperty("--steps", String(steps));
-          cells.setAttribute("role", "img");
-          const hitSpacing = steps / row.count;
-          cells.setAttribute("aria-label", `${row.count} pulses across ${steps} subdivisions.`);
-          for (let step = 0; step < steps; step += 1) {
-            const cell = document.createElement("span");
-            cell.className = "poly-cell";
-            cell.dataset.step = String(step);
-            if (step % hitSpacing === 0) cell.classList.add("is-hit");
-            cells.appendChild(cell);
+          if (row.groove) {
+            rowEl.classList.add("groove-row");
+            cells.setAttribute("role", "img");
+            cells.setAttribute("aria-label", `${row.letter}: ${row.count} hits in ${steps} steps`);
+            const beatEvery = steps === 12 ? 3 : 4;
+            for (let step = 0; step < steps; step += 1) {
+              const cell = document.createElement("span");
+              cell.className = "poly-cell";
+              cell.dataset.step = String(step);
+              const c = row.groove[step];
+              if (c === "x") cell.classList.add("is-hit");
+              else if (c === "g") cell.classList.add("is-hit", "is-ghost");
+              if (step % beatEvery === 0) cell.classList.add("beat-start");
+              cells.appendChild(cell);
+            }
+          } else if (row.meter) {
+            cells.setAttribute("role", "group");
+            cells.setAttribute("aria-label", `${steps} steps. Tap a step to change it.`);
+            let groupStart = 0;
+            const starts = new Set(poly.groups.map((g) => { const s = groupStart; groupStart += g; return s; }));
+            for (let step = 0; step < steps; step += 1) {
+              const cell = document.createElement("button");
+              cell.type = "button";
+              cell.className = "poly-cell meter-cell";
+              cell.dataset.step = String(step);
+              const v = poly.pattern[step] || 0;
+              if (v === 2) cell.classList.add("is-hit", "is-accent");
+              else if (v === 1) cell.classList.add("is-hit", "is-soft");
+              if (starts.has(step)) cell.classList.add("group-start");
+              cell.textContent = String(step + 1);
+              cell.setAttribute("aria-label", `Step ${step + 1}: ${v === 2 ? "accent" : v === 1 ? "hit" : "off"}`);
+              cells.appendChild(cell);
+            }
+          } else {
+            cells.setAttribute("role", "img");
+            const hitSpacing = steps / row.count;
+            cells.setAttribute("aria-label", `${row.count} pulses across ${steps} subdivisions.`);
+            for (let step = 0; step < steps; step += 1) {
+              const cell = document.createElement("span");
+              cell.className = "poly-cell";
+              cell.dataset.step = String(step);
+              if (step % hitSpacing === 0) cell.classList.add("is-hit");
+              cells.appendChild(cell);
+            }
           }
           rowEl.appendChild(label);
           rowEl.appendChild(cells);
@@ -2539,7 +2786,7 @@ function tc(key, alpha) {
 
       function schedulePolyTick(time, frequency, gainValue, panValue) {
         const ctx = state.ctx;
-        if (!ctx) return;
+        if (!ctx || !poly.bus) return;
         const oscillator = ctx.createOscillator();
         const gain = ctx.createGain();
         oscillator.type = "sine";
@@ -2555,34 +2802,52 @@ function tc(key, alpha) {
           gain.connect(panner);
           output = panner;
         }
-        output.connect(ctx.destination);
+        output.connect(poly.bus);
         oscillator.start(time);
         oscillator.stop(time + 0.1);
+        poly.live.add(oscillator);
         oscillator.onended = () => {
+          poly.live.delete(oscillator);
           try { oscillator.disconnect(); gain.disconnect(); output.disconnect(); } catch (error) {}
         };
       }
 
       function schedulePolyCycle(startTime) {
-        const steps = lcm(poly.x, poly.y);
+        const steps = polySteps();
         const stepDuration = poly.cycleDur / steps;
         for (let step = 0; step < steps; step += 1) {
           const time = startTime + step * stepDuration;
+          if (poly.mode === "groove") {
+            const g = GROOVES[poly.groove];
+            const t = time + (g.swing && step % 2 === 1 ? g.swing * stepDuration : 0);
+            for (const row of g.rows) {
+              const c = row.p[step];
+              if (c === "x") drum(row.sound, t, 1);
+              else if (c === "g") drum(row.sound === "snare" ? "ghost" : row.sound, t, 0.5);
+            }
+            continue;
+          }
+          if (poly.mode === "meter") {
+            const v = poly.pattern[step] || 0;
+            if (!v) continue;
+            if (step === 0 && v === 2) schedulePolyTick(time, 1567.98, 0.06, 0);
+            else if (v === 2) schedulePolyTick(time, 1174.66, 0.045, 0);
+            else schedulePolyTick(time, 880, 0.026, 0);
+            continue;
+          }
           const accent = step === 0;
-          if (step % (steps / poly.x) === 0) {
-            schedulePolyTick(time, accent ? 1318.51 : 1046.5, accent ? 0.055 : 0.038, -0.58);
-          }
-          if (step % (steps / poly.y) === 0) {
-            schedulePolyTick(time, accent ? 880 : 659.25, accent ? 0.045 : 0.032, 0.58);
-          }
+          if (step % (steps / poly.x) === 0) schedulePolyTick(time, accent ? 1318.51 : 1046.5, accent ? 0.055 : 0.038, -0.58);
+          if (step % (steps / poly.y) === 0) schedulePolyTick(time, accent ? 880 : 659.25, accent ? 0.045 : 0.032, 0.58);
         }
       }
 
       function schedulePolyTicks() {
         if (!poly.playing || !state.ctx) return;
-        const horizon = state.ctx.currentTime + 0.28;
+        // Schedule one cycle at a time, just before it starts, so changes and
+        // Stop take effect quickly.
+        const horizon = state.ctx.currentTime + 0.12;
         let guard = 0;
-        while (poly.nextCycle < horizon && guard < 8) {
+        while (poly.nextCycle < horizon && guard < 4) {
           if (poly.nextCycle >= state.ctx.currentTime - 0.02) schedulePolyCycle(poly.nextCycle);
           poly.nextCycle += poly.cycleDur;
           guard += 1;
@@ -2595,16 +2860,19 @@ function tc(key, alpha) {
           const ctx = ensureAudio();
           if (ctx.state === "suspended") ctx.resume().catch(() => {});
           updatePolyUI();
+          poly.bus = ctx.createGain();
+          poly.bus.gain.value = 1;
+          poly.bus.connect(ctx.destination);
           poly.playing = true;
           poly.lastStep = -1;
           poly.anchor = ctx.currentTime + 0.09;
           poly.nextCycle = poly.anchor;
-          poly.timer = window.setInterval(schedulePolyTicks, 50);
+          poly.timer = window.setInterval(schedulePolyTicks, 25);
           schedulePolyTicks();
           updatePolyButton();
-          if (el.seqStepReadout) el.seqStepReadout.textContent = `count-in / ${lcm(poly.x, poly.y)}`;
+          if (el.seqStepReadout) el.seqStepReadout.textContent = `count-in / ${polySteps()}`;
         } catch (error) {
-          showToast("The polyrhythm ticks could not start.", "error");
+          showToast("The rhythm ticks could not start.", "error");
           poly.playing = false;
           updatePolyButton();
         }
@@ -2615,11 +2883,20 @@ function tc(key, alpha) {
           clearInterval(poly.timer);
           poly.timer = null;
         }
+        // Silence everything already scheduled, right now.
+        if (poly.bus && state.ctx) {
+          const now = state.ctx.currentTime, bus = poly.bus;
+          try { bus.gain.cancelScheduledValues(now); bus.gain.setValueAtTime(bus.gain.value, now); bus.gain.linearRampToValueAtTime(0, now + 0.015); } catch (e) {}
+          poly.live.forEach((osc) => { try { osc.stop(now + 0.02); } catch (e) {} });
+          setTimeout(() => { try { bus.disconnect(); } catch (e) {} }, 60);
+        }
+        poly.bus = null;
+        poly.live = new Set();
         poly.playing = false;
         poly.lastStep = -1;
         poly.anchor = 0;
         $$(".poly-cell.is-current").forEach((cell) => cell.classList.remove("is-current"));
-        if (el.seqStepReadout) el.seqStepReadout.textContent = `step — / ${lcm(poly.x, poly.y)}`;
+        if (el.seqStepReadout) el.seqStepReadout.textContent = `step — / ${polySteps()}`;
         updatePolyButton();
       }
 
@@ -2642,7 +2919,7 @@ function tc(key, alpha) {
 
       function updatePolyAnimation(force = false) {
         if (!poly.playing || !state.ctx) return;
-        const steps = lcm(poly.x, poly.y);
+        const steps = polySteps();
         const elapsed = state.ctx.currentTime - poly.anchor;
         if (elapsed < 0) {
           if (el.seqStepReadout) el.seqStepReadout.textContent = `count-in / ${steps}`;
@@ -2658,6 +2935,32 @@ function tc(key, alpha) {
         if (el.seqStepReadout) {
           el.seqStepReadout.textContent = `step ${String(step + 1).padStart(2, "0")} / ${steps}`;
         }
+      }
+
+      function bindRhythmLab() {
+        $$("[data-rmode]").forEach((b) => b.addEventListener("click", () => setRhythmMode(b.dataset.rmode)));
+        $$("[data-groove]").forEach((b) => b.addEventListener("click", () => setGroove(b.dataset.groove)));
+        $$("[data-meter]").forEach((b) => b.addEventListener("click", () => {
+          const [n, d] = b.dataset.meter.split("/").map(Number);
+          setLabMeter(n, d);
+        }));
+        const num = $("#meterNum"), den = $("#meterDen");
+        const applyMeter = () => { const n = Number(num.value); if (Number.isFinite(n) && n >= 2 && n <= 16) setLabMeter(n, Number(den.value)); };
+        num?.addEventListener("change", applyMeter);
+        den?.addEventListener("change", applyMeter);
+        const a = $("#polyA"), b = $("#polyB");
+        const applyPoly = () => { const x = Number(a.value), y = Number(b.value); if (Number.isFinite(x) && Number.isFinite(y)) setPolyRatio(x, y); };
+        a?.addEventListener("change", applyPoly);
+        b?.addEventListener("change", applyPoly);
+        $("#meterReset")?.addEventListener("click", () => setLabMeter(poly.meterN, poly.meterD));
+        // Tap a step to cycle it: off → hit → accent. Takes effect on the next bar.
+        el.polyRows?.addEventListener("click", (e) => {
+          const cell = e.target.closest && e.target.closest(".meter-cell");
+          if (!cell) return;
+          const i = Number(cell.dataset.step);
+          poly.pattern[i] = ((poly.pattern[i] || 0) + 1) % 3;
+          renderPolyGrid(polySteps());
+        });
       }
 
       function summarize(values, modeDecimals = 0) {
@@ -3205,6 +3508,7 @@ function tc(key, alpha) {
         buildPiano();
         buildRootSelect();
         bindEvents();
+        bindRhythmLab();
         paintAllRanges();
         updateLoopButton();
         setPitchN(0, { play: false });

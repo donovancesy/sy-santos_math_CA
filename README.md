@@ -4,8 +4,12 @@ Sipra listens to the song playing on Spotify (desktop app or web player) and sho
 
 ## Two pages
 
-- **`index.html`: Live.** Everything is about the song that's playing: listen to Spotify, the current chord, the chord chart, tempo, key, meter, spectrum, then **The math in this song** (periodicity, equal temperament, ratios in chords, bars & remainders, Fourier analysis, statistics), each worked out with your song's numbers. **Stats** keeps the songs you listened to (in this browser).
-- **`math.html`: Math map.** The concepts behind every number (periodicity, geometric sequences, ratios, Fourier, LCM & modular arithmetic, logarithms, statistics, optimization), each linked to a lesson and a lab: the **Signal lab** (add an MP3/WAV/M4A or use the demo, tap a tempo, FFT and beat views), the **Pitch lab** (keyboard and the `f = 440 · 2^(n/12)` graph) and the **Rhythm lab** (polyrhythms and LCM). Lessons there use the last song you listened to.
+- **`index.html`: Live.** Everything is about the song that's playing: listen to Spotify, the current chord (drawn on a **piano** or **guitar**), the chord chart, **lyrics** that follow the song, tempo (with **½× / 2×** to fix it), key, meter, spectrum, then **The math in this song** (periodicity, equal temperament, ratios in chords, bars & remainders, Fourier analysis, statistics), each worked out with your song's numbers. **Stats** keeps the songs you listened to (in this browser).
+- **`math.html`: Math map.** The concepts behind every number (periodicity, geometric sequences, ratios, Fourier, LCM & modular arithmetic, logarithms, statistics, optimization), each linked to a lesson and a lab: the **Signal lab** (add an MP3/WAV/M4A or use the demo, tap a tempo, FFT and beat views), the **Pitch lab** (keyboard and the `f = 440 · 2^(n/12)` graph) and the **Rhythm lab**: polyrhythms (2–12 against 2–12, lining up after LCM steps), any **meter** from 2/4 to 12/8 or your own (an editable step grid), and famous **grooves** (rock, funk, disco, hip-hop, reggae, jazz swing, bossa nova, son clave, Afro-Cuban 6/8) with the math of each. Lessons there use the last song you listened to.
+
+From the Live page the Math map opens **on top of the page**, so sharing Spotify's audio keeps running while you explore; **Back to listening** closes it.
+
+**Lyrics** come from [LRCLIB](https://lrclib.net), a free, open lyrics database. They're off until you switch them on; then Sipra sends LRCLIB only the song's name, artist and length. On the website they need the song name and time, so link your Spotify account (in the extension they work straight away).
 
 Both pages share `js/app.js`; each runs only the parts whose elements it has (`<body data-page="live">` / `data-page="math"`).
 
@@ -13,7 +17,9 @@ Both pages share `js/app.js`; each runs only the parts whose elements it has (`<
 
 While a song plays, Sipra writes out its chords **bar by bar** (`| Am | F | C | G |`), finds the **loop** that repeats (vi – IV – I – V), and notes whether the tempo is steady, the song's tuning (A4 = 440 Hz or not), any key change, and how many chord changes per minute. Tap **I–V** to switch to Roman numerals, or **Copy** to paste the chart as text. Bars with two chords show both (`Dm7 G`).
 
-Once a bar is a few seconds old it's **frozen**: written into the chart for good, so earlier chords can't all flip to one chord later. Only the newest bars are still being worked out.
+Once a bar is a few seconds old it's **frozen**: written into the chart for good, so earlier chords can't all flip to one chord later. Only the newest bars are still being worked out. The Chord card always shows the chart's newest chord, so the two never disagree.
+
+If you start listening partway through a song, the chart says where it joined. Play the song again from the top and the chart starts over (this needs the song's time: the extension always has it, the website once Spotify is linked).
 
 ## Live listening (Spotify)
 

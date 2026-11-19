@@ -2,11 +2,11 @@
   "manifest_version": 3,
   "name": "Sipra",
   "short_name": "Sipra",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "Sipra shows the math of the song playing on Spotify Web Player: tempo, key, chords, pitch and spectrum, live, with lessons that teach how it's calculated.",
   "minimum_chrome_version": "116",
   "permissions": ["sidePanel", "tabCapture", "activeTab", "storage", "tabs", "scripting"],
-  "host_permissions": ["https://open.spotify.com/*"],
+  "host_permissions": ["https://open.spotify.com/*", "https://lrclib.net/*"],
   "background": {
     "service_worker": "background.js"
   },

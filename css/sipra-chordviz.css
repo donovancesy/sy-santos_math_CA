@@ -1,0 +1,31 @@
+/* Sipra chord visualizer (website + extension). Uses the host page's tokens. */
+.cv { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 0; }
+.cv-tabs { display: inline-flex; align-self: flex-end; padding: 2px; border-radius: 999px; border: 1px solid var(--line-strong); }
+.cv-tabs button {
+  font: inherit; font-size: 11.5px; font-weight: 800; height: 24px; padding: 0 10px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.cv-tabs button[aria-selected="true"] { background: var(--accent); color: var(--on-accent, #000); }
+.cv-stage { display: flex; justify-content: center; align-items: center; min-height: 72px; }
+.cv-stage svg { width: 100%; height: auto; display: block; }
+.cv-piano { max-width: 300px; }
+.cv-guitar { max-width: 150px; }
+
+.cv-w { fill: #fafafa; stroke: rgba(0, 0, 0, .35); stroke-width: 1; }
+.cv-b { fill: #1b1b1b; stroke: #000; stroke-width: 1; }
+.cv-w.cv-tone, .cv-b.cv-tone { fill: var(--accent, #1DB954); }
+.cv-w.cv-root, .cv-b.cv-root { fill: var(--accent, #1DB954); stroke: var(--text, #000); stroke-width: 2; }
+.cv-w.cv-bass, .cv-b.cv-bass { fill: #8e7cff; }
+.cv-lbl { font: 700 8px "Geist Mono", ui-monospace, monospace; fill: #111; text-anchor: middle; }
+.cv-guitar .cv-lbl { fill: var(--muted, #777); font-size: 8.5px; }
+
+.cv-fret { stroke: var(--line-strong, rgba(127, 127, 127, .45)); stroke-width: 1; }
+.cv-string { stroke: var(--muted, #888); stroke-width: 1; }
+.cv-nut { fill: var(--text, #111); }
+.cv-fretno { font: 700 10px "Geist Mono", ui-monospace, monospace; fill: var(--muted, #777); text-anchor: end; }
+.cv-dot { fill: var(--accent, #1DB954); }
+.cv-dot.cv-root { stroke: var(--text, #000); stroke-width: 2; }
+.cv-open { fill: none; stroke: var(--accent, #1DB954); stroke-width: 1.6; }
+.cv-open.cv-root { stroke-width: 2.6; }
+.cv-mute { font: 700 11px "Geist Mono", ui-monospace, monospace; fill: var(--faint, #999); text-anchor: middle; }
+.cv-barre { stroke: var(--accent, #1DB954); stroke-width: 10; stroke-linecap: round; opacity: .55; }

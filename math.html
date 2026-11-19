@@ -74,7 +74,7 @@
       <div class="section-head">
         <div class="section-heading">
           <h2 id="map-title">The concepts</h2>
-          <p class="section-lead">Built for Math 10. Each card links to its lab below and to a full lesson.</p>
+          <p class="section-lead">Each idea links to a hands-on lab below and to a full lesson.</p>
         </div>
       </div>
       <div class="mm-grid">
@@ -386,19 +386,61 @@
       <div class="section-head">
         <div class="section-heading">
           <h2 id="rhythm-title">Rhythm lab</h2>
-          <p class="section-lead">Two rhythms at once line up again after LCM(x, y) steps.</p>
+          <p class="section-lead">Hear two rhythms line up after LCM(x, y) steps, build a bar in any time signature from 2/4 to 12/8, or take apart famous grooves from rock to bossa nova.</p>
         </div>
       </div>
 
       <div class="module-panel glass">
         <div class="poly-layout">
           <div class="poly-intro">
-            <div>
+            <div class="rhythm-modes" role="tablist" aria-label="Rhythm lab mode">
+              <button type="button" role="tab" data-rmode="poly" aria-selected="true">Polyrhythm</button>
+              <button type="button" role="tab" data-rmode="meter" aria-selected="false">Meter</button>
+              <button type="button" role="tab" data-rmode="groove" aria-selected="false">Grooves</button>
+            </div>
+            <div id="polyControls">
               <div class="ratio-presets" role="group" aria-label="Polyrhythm ratio">
                 <button class="ratio-btn" type="button" data-x="2" data-y="3" aria-pressed="false">2 : 3</button>
                 <button class="ratio-btn" type="button" data-x="3" data-y="4" aria-pressed="true">3 : 4</button>
                 <button class="ratio-btn" type="button" data-x="4" data-y="5" aria-pressed="false">4 : 5</button>
                 <button class="ratio-btn" type="button" data-x="5" data-y="7" aria-pressed="false">5 : 7</button>
+              </div>
+              <div class="rhythm-custom">
+                <label>A <input id="polyA" type="number" min="2" max="12" value="3" inputmode="numeric"></label>
+                <span>against</span>
+                <label>B <input id="polyB" type="number" min="2" max="12" value="4" inputmode="numeric"></label>
+              </div>
+            </div>
+            <div id="grooveControls" hidden>
+              <div class="ratio-presets" role="group" aria-label="Groove">
+                <button class="ratio-btn" type="button" data-groove="rock">Rock</button>
+                <button class="ratio-btn" type="button" data-groove="funk">Funk</button>
+                <button class="ratio-btn" type="button" data-groove="disco">Disco</button>
+                <button class="ratio-btn" type="button" data-groove="hiphop">Hip-hop</button>
+                <button class="ratio-btn" type="button" data-groove="reggae">Reggae</button>
+                <button class="ratio-btn" type="button" data-groove="swing">Jazz swing</button>
+                <button class="ratio-btn" type="button" data-groove="bossa">Bossa nova</button>
+                <button class="ratio-btn" type="button" data-groove="clave">Son clave</button>
+                <button class="ratio-btn" type="button" data-groove="afro">Afro-Cuban 6/8</button>
+              </div>
+              <ul class="groove-math" id="grooveMath"></ul>
+            </div>
+            <div id="meterControls" hidden>
+              <div class="ratio-presets" role="group" aria-label="Time signature">
+                <button class="ratio-btn" type="button" data-meter="2/4">2/4</button>
+                <button class="ratio-btn" type="button" data-meter="3/4">3/4</button>
+                <button class="ratio-btn" type="button" data-meter="4/4">4/4</button>
+                <button class="ratio-btn" type="button" data-meter="5/4">5/4</button>
+                <button class="ratio-btn" type="button" data-meter="6/8">6/8</button>
+                <button class="ratio-btn" type="button" data-meter="7/8">7/8</button>
+                <button class="ratio-btn" type="button" data-meter="9/8">9/8</button>
+                <button class="ratio-btn" type="button" data-meter="12/8">12/8</button>
+              </div>
+              <div class="rhythm-custom">
+                <label>Custom <input id="meterNum" type="number" min="2" max="16" value="4" inputmode="numeric" aria-label="Beats per bar"></label>
+                <span>/</span>
+                <select id="meterDen" aria-label="Note value"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option><option value="16">16</option></select>
+                <button class="chip-btn" id="meterReset" type="button">Reset pattern</button>
               </div>
             </div>
             <div class="lcm-display">

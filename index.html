@@ -24,6 +24,8 @@
   <!-- Front-end styles: theme tokens, layout, components. -->
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/sipra-chart.css">
+  <link rel="stylesheet" href="css/sipra-chordviz.css">
+  <link rel="stylesheet" href="css/sipra-lyrics.css">
   <link rel="stylesheet" href="css/learn.css">
 </head>
 
@@ -139,7 +141,8 @@
           </ul>
         </details>
 
-        <div class="chord-panel">
+        <div class="chord-panel chord-with-viz">
+          <div class="chord-text">
           <div class="chord-head"><span>Chord</span><button class="learn-btn" type="button" data-learn="chords"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button></div>
           <div class="chord-main">
             <p class="chord-name" id="liveChord">—</p>
@@ -147,15 +150,24 @@
           </div>
           <code class="chord-math" id="liveChordMath">root + {0, 4, 7} semitones</code>
           <ol class="chord-line" id="liveChordLine" aria-label="Recent chords"></ol>
+          </div>
+          <div class="chord-viz" id="liveChordViz" aria-label="The chord on a piano or guitar"></div>
         </div>
 
         <div class="chord-panel" id="liveChart" aria-label="Chord chart, bar by bar"></div>
+
+        <div class="chord-panel" id="liveLyrics" aria-label="Lyrics"></div>
 
         <div class="live-grid">
           <article class="live-tile">
             <header><span>Tempo</span><button class="learn-btn" type="button" data-learn="tempo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button></header>
             <p class="live-big"><span id="liveBpm">—</span><small>BPM</small></p>
             <p class="live-math" id="liveBpmMath">Waiting for a beat…</p>
+            <div class="tempo-fix" role="group" aria-label="Fix the tempo">
+              <button type="button" data-tempo-fix="0.5" title="Halve the tempo (Sipra counted eighth notes)">½×</button>
+              <button type="button" data-tempo-fix="2" title="Double the tempo (Sipra counted half notes)">2×</button>
+              <span class="tempo-fix-note" id="liveTempoFix"></span>
+            </div>
             <div class="conf"><i id="liveBpmConf"></i></div>
           </article>
           <article class="live-tile">
@@ -170,11 +182,6 @@
             <div class="pulse" id="livePulse" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
             <p class="live-math" id="liveFeel"></p>
             <p class="live-math" id="liveBeats">beat — / —</p>
-          </article>
-          <article class="live-tile">
-            <header><span>Note</span><button class="learn-btn" type="button" data-learn="pitch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg><span>Learn</span></button></header>
-            <p class="live-big"><span id="liveNote">—</span><sup id="liveOct"></sup></p>
-            <p class="live-math" id="liveNoteMath">—</p>
           </article>
         </div>
 
@@ -378,6 +385,8 @@
   <script src="js/sipra-rhythm.js"></script>
   <script src="js/sipra-engine.js"></script>
   <script src="js/sipra-chart.js"></script>
+  <script src="js/sipra-chordviz.js"></script>
+  <script src="js/sipra-lyrics.js"></script>
   <script src="js/learn.js"></script>
   <script src="js/spotify-link.js"></script>
   <script src="js/live.js"></script>
