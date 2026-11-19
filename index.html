@@ -23,6 +23,7 @@
 
   <!-- Front-end styles: theme tokens, layout, components. -->
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/sipra-chart.css">
   <link rel="stylesheet" href="css/learn.css">
 </head>
 
@@ -127,10 +128,16 @@
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
               Stop
             </button>
+            <button class="btn btn-outline" id="liveNewSongBtn" type="button" hidden title="Start counting a new song (Sipra also notices on its own)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5v14l9-7z"/><path d="M18 5v14"/></svg>
+              New song
+            </button>
+            <select class="live-input" id="liveInput" aria-label="Microphone or audio input" title="Audio input" hidden></select>
           </div>
           <div class="live-state">
             <div class="eq" id="liveEq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
             <span class="live-status" id="liveStatus" data-state="off">Off</span>
+            <span class="live-song-no" id="liveSongNo" hidden></span>
             <span class="live-clock" id="liveClock">0:00</span>
           </div>
         </div>
@@ -144,6 +151,8 @@
             <li><strong>Windows / ChromeOS:</strong> tap Listen to Spotify → <em>Entire screen</em> → switch on <em>Share system audio</em>.</li>
             <li><strong>Mac (Chrome 141 or newer):</strong> tap Listen to Spotify → <em>Window</em> → pick the Spotify window, with audio on. Older Macs: use <em>Mic</em>.</li>
             <li><strong>Spotify in a browser tab:</strong> pick the tab → <em>Share tab audio</em>.</li>
+            <li><strong>No screen sharing (Windows):</strong> turn on <em>Stereo Mix</em> in Sound settings → Recording, then tap <em>Mic</em> and pick Stereo Mix from the input list.</li>
+            <li><strong>New songs:</strong> Sipra notices the gap between songs and starts fresh, saving the last song to Stats. For songs that run straight into each other, tap <em>New song</em>.</li>
             <li><strong>Song name &amp; time from the desktop app:</strong> <button class="text-link" type="button" id="spotifyLinkOpen">link your Spotify account</button>.</li>
           </ul>
         </details>
@@ -157,6 +166,8 @@
           <code class="chord-math" id="liveChordMath">root + {0, 4, 7} semitones</code>
           <ol class="chord-line" id="liveChordLine" aria-label="Recent chords"></ol>
         </div>
+
+        <div class="chord-panel" id="liveChart" aria-label="Chord chart, bar by bar"></div>
 
         <div class="live-grid">
           <article class="live-tile">
@@ -695,6 +706,7 @@
   <script src="js/analysis.js"></script>
   <script src="js/sipra-rhythm.js"></script>
   <script src="js/sipra-engine.js"></script>
+  <script src="js/sipra-chart.js"></script>
   <script src="js/learn.js"></script>
   <script src="js/spotify-link.js"></script>
   <script src="js/live.js"></script>

@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="sidepanel.css">
+  <link rel="stylesheet" href="sipra-chart.css">
   <script src="theme-init.js"></script>
 </head>
 <body>
@@ -75,6 +76,9 @@
       <code class="chord-math" id="chordMath">root + {0, 4, 7} semitones</code>
       <ol class="chord-line" id="chordLine" aria-label="Recent chords"></ol>
     </section>
+
+    <!-- Chord chart: the song's chords bar by bar -->
+    <section class="card" id="chartCard" aria-label="Chord chart, bar by bar"></section>
 
     <section class="grid" aria-label="Song math">
       <article class="tile">
@@ -146,6 +150,7 @@
   <script src="analysis.js"></script>
   <script src="sipra-rhythm.js"></script>
   <script src="sipra-engine.js"></script>
+  <script src="sipra-chart.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

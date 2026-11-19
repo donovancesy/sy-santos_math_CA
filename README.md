@@ -2,6 +2,10 @@
 
 Sipra listens to the music you're playing and shows its math live: tempo, key, chords, meter, pitch, spectrum and statistics. Every number has a **Learn** button with a full lesson worked out with your song.
 
+## Chord chart
+
+While a song plays, Sipra writes out its chords **bar by bar** (`| Am | F | C | G |`), finds the **loop** that repeats (vi – IV – I – V), and notes whether the tempo is steady, the song's tuning (A4 = 440 Hz or not), any key change, and how many chord changes per minute. Tap **I–V** to switch to Roman numerals, or **Copy** to paste the chart as text. Bars with two chords show both (`Dm7 G`).
+
 ## Live listening (Spotify)
 
 The **Live** section listens to music that's playing on your computer and works out its tempo, key, meter and loudest note as it goes.
@@ -31,7 +35,9 @@ Live listening needs the site to be opened from its own address, such as GitHub 
 
 ## Run it on your computer
 
-In this folder, run `python3 -m http.server 8000`, then open http://127.0.0.1:8000.
+On Windows, double-click **`Start Sipra.cmd`** (needs [Node.js](https://nodejs.org)). It opens Sipra at http://127.0.0.1:8080; keep the black window open while you use it.
+
+Or in this folder run `node serve.js` (or `python3 -m http.server 8000`) and open the address it prints. Opening `index.html` straight from the folder won't work for Live listening: browsers block audio sharing on `file://` pages.
 
 All audio processing happens in your browser. Nothing is uploaded.
 
