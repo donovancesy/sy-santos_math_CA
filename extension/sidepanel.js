@@ -10,9 +10,11 @@
   const NOTE_NAMES = window.SipraEngine.NOTE_NAMES;
   const SPOTIFY = "https://open.spotify.com/";
   const UPDATE_MS = 1500;
-  const RATIOS = { maj: "4 : 5 : 6", min: "10 : 12 : 15", dim: "≈ 5 : 6 : 7", sus4: "6 : 8 : 9", "7": "≈ 4 : 5 : 6 : 7", maj7: "8 : 10 : 12 : 15", m7: "10 : 12 : 15 : 18" };
+  const RATIOS = { maj: "4 : 5 : 6", min: "10 : 12 : 15", dim: "≈ 5 : 6 : 7", sus4: "6 : 8 : 9", "7": "≈ 4 : 5 : 6 : 7", maj7: "8 : 10 : 12 : 15", m7: "10 : 12 : 15 : 18", sus2: "8 : 9 : 12", aug: "16 : 20 : 25" };
 
   const $ = (id) => document.getElementById(id);
+  // Bar-by-bar chord chart (sipra-chart.js).
+  const chartView = window.SipraChart && $("chartCard") ? window.SipraChart.mount($("chartCard")) : null;
   const el = {
     art: $("art"), artImg: $("artImg"), artEq: $("artEq"), title: $("npTitle"), artist: $("npArtist"), status: $("status"),
     progress: $("progressFill"), pos: $("posText"), dur: $("durText"), level: $("levelFill"), levelPeak: $("levelPeak"),
@@ -110,6 +112,7 @@
       resetAnalysis();
     }
     state.np = info;
+    if (state.engine) state.engine.autoSplit = !info.title;
     el.title.textContent = info.title || "Nothing playing";
     el.artist.textContent = info.title ? [info.artist, info.album].filter(Boolean).join(" · ") : "Play something on Spotify";
     if (info.art && el.artImg.getAttribute("src") !== info.art) { el.artImg.src = info.art; el.artImg.hidden = false; }
@@ -197,13 +200,19 @@
       source.connect(tap);
       tap.connect(silent).connect(ctx.destination);
 
-      state.engine = new window.SipraEngine(ctx.sampleRate);
+      // The Spotify tab tells us when the song changes, so only split on our own
+      // (gap + different tempo/key) when its song info is missing.
+      state.engine = new window.SipraListener(ctx.sampleRate, { autoSplit: !(state.np && state.np.title) });
       state.streamOffset = null;
+      state.epoch = state.engine.epoch;
       tap.port.onmessage = (event) => {
         const engine = state.engine;
         if (!engine) return;
-        engine.push(event.data);
-        // Map engine time (seconds of audio received) to the audio clock.
+        const used = engine.push(event.data);
+        // Re-sync the beat clock whenever the analysis clock jumps (gap, reset, new song).
+        if (engine.epoch !== state.epoch) { state.epoch = engine.epoch; state.streamOffset = null; }
+        if (!used) return;
+        // Map engine time (seconds of music heard) to the audio clock.
         const offset = ctx.currentTime - engine.seconds;
         state.streamOffset = state.streamOffset === null ? offset : Math.min(state.streamOffset + 0.002, offset);
       };
@@ -249,6 +258,7 @@
     state.silentFor = 0;
     renderResult();
     renderChord(null);
+    if (chartView) chartView.clear();
   }
 
   /* ---------- heavy estimates every 2.5 s ---------- */
@@ -256,8 +266,8 @@
     const engine = state.engine;
     if (!engine || !state.cap) return;
     if (state.np && !state.np.playing) return;
-    if (engine.energy < 0.0006) {
-      state.silentFor += UPDATE_MS / 1000;
+    if (engine.inGap) {
+      state.silentFor = engine.silentSeconds;
       if (state.silentFor >= 8) {
         setStatus("No sound", "warn");
         setHint("No audio is reaching Sipra. Check Spotify isn't muted, then Disconnect and Connect again.");
@@ -270,6 +280,7 @@
     if (!r.ready) { setStatus(`Listening ${Math.floor(r.seconds)}s`, "off"); return; }
     state.result = r;
     renderResult();
+    if (chartView) chartView.update(r, { title: state.np && state.np.title, artist: state.np && state.np.artist });
     setStatus("Live", "live");
     publishLive();
   }, UPDATE_MS);
@@ -287,11 +298,13 @@
     el.bpmMath.textContent = `${r.compound ? "♩. " : ""}T = 60/${Math.round(r.bpm)} = ${(60 / r.bpm).toFixed(3)}s`;
     el.bpmAlt.textContent = r.bpm >= 140 ? `or half-time ${(r.bpm / 2).toFixed(0)}` : r.bpm < 80 ? `or double-time ${(r.bpm * 2).toFixed(0)}` : "";
     el.bpmConf.style.width = `${Math.round(r.bpmConfidence * 100)}%`;
-    const name = NOTE_NAMES[r.key.tonicPc];
-    const n = r.key.tonicPc - 9;
-    el.key.textContent = `${name} ${r.key.mode}`;
-    el.keyMath.innerHTML = `440·2<sup>${n}/12</sup> = ${(440 * Math.pow(2, n / 12)).toFixed(1)} Hz`;
-    el.keyConf.style.width = `${Math.round(r.key.confidence * 100)}%`;
+    // After a key change, show the key we're in now.
+    const k = r.keyNow || r.key;
+    const name = NOTE_NAMES[k.tonicPc];
+    const n = k.tonicPc - 9;
+    el.key.textContent = `${name} ${k.mode}`;
+    el.keyMath.innerHTML = (r.keyNow ? `was ${NOTE_NAMES[r.key.tonicPc]} ${r.key.mode} · ` : "") + `440·2<sup>${n}/12</sup> = ${(440 * Math.pow(2, n / 12)).toFixed(1)} Hz`;
+    el.keyConf.style.width = `${Math.round(k.confidence * 100)}%`;
     el.meter.textContent = r.meterReady ? r.meter : "…";
     el.meterFeel.textContent = !r.meterReady ? "" : r.compound ? `♩. = ${Math.round(r.bpm)} · ♪ = ${Math.round(r.pulseBpm)}`
       : r.feel === "swing" ? "swing feel" : `${r.beatsPerBar} beats per bar`;
@@ -342,7 +355,9 @@
     const chords = state.engine ? state.engine.chordInfo().history : [];
     const counts = new Map();
     chords.forEach((h) => counts.set(h.name, (counts.get(h.name) || 0) + (h.end - h.start)));
-    const topChords = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n]) => n);
+    // The chart's loop (the progression) if there is one; else the most-heard chords.
+    const loop = r.chart && r.chart.loop;
+    const topChords = loop ? loop.names.slice(0, 8) : [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n]) => n);
     const entry = { title: np.title, artist: np.artist, art: np.art, bpm: r.bpm, key: { tonicPc: r.key.tonicPc, mode: r.key.mode }, meter: r.meter, chords: topChords, duration: np.duration, at: Date.now() };
     const last = state.session[0];
     if (last && last.title === entry.title && last.artist === entry.artist) state.session[0] = entry;
@@ -538,7 +553,7 @@
 
   function updateBeats() {
     const r = state.result, cap = state.cap;
-    if (cap && r && r.ready && state.streamOffset !== null && (!state.np || state.np.playing)) {
+    if (cap && r && r.ready && state.streamOffset !== null && (!state.np || state.np.playing) && !(state.engine && state.engine.inGap)) {
       // Beat k after the last tracked beat lands at lastBeatTime + k·T (engine clock).
       const T = r.beatPeriod, B = r.beatsPerBar || 4;
       const latency = (cap.ctx.outputLatency || 0) + (cap.ctx.baseLatency || 0);

@@ -3,8 +3,9 @@
 Sipra sits next to **Spotify Web Player** and shows the math of the song that's playing, live:
 
 - **Chord:** the chord right now (e.g. Am), its role in the key (vi), its notes and frequency ratio, plus the last few chords
-- **Tempo:** BPM and beat length `T = 60 / BPM`
-- **Key:** home note and mode, with `f = 440 · 2^(n/12)`
+- **Chart:** the whole song's chords bar by bar (`| Am | F | C | G |`), the loop that repeats (vi – IV – I – V), names or Roman numerals, and a **Copy** button for the text chart
+- **Tempo:** BPM and beat length `T = 60 / BPM`, plus whether it's steady or speeding up / slowing down
+- **Key:** home note and mode, with `f = 440 · 2^(n/12)`; shows a key change mid-song, and the song's tuning if it isn't A4 = 440 Hz
 - **Meter:** 3/4 or 4/4, with dots that light on each beat
 - **Beats:** beat number through the song, `N = D · BPM / 60`
 - **Spectrum and waveform**, the **loudest note** with its tuning in cents, and a **level meter**
@@ -38,7 +39,12 @@ All audio is analysed on your computer. Nothing is uploaded, and no Spotify logi
 - **Tempo:** onset strength across 40 frequency bands every 11 ms, autocorrelation with a check for half/double speed (40–240 BPM), then a dynamic-programming beat tracker (the method used by librosa). The BPM shown is the slope of the tracked beats, so it follows tempo drift.
 - **Meter:** 2/4, 3/4, 4/4, 5/4, 7/4, plus compound 6/8, 9/8 and 12/8 (beats split in three) and swing feel. It looks at where chords change, where the kick and bass land, whether there's a snare backbeat, and how hits are spread inside each beat. 2/4 and 4/4 can sound identical, so when the evidence fits both, Sipra shows the other reading too.
 - **Key:** the whole song's chroma (strength of each of the 12 notes) correlated with key profiles.
-- **Chords:** recent chroma compared with chord templates (major, minor, dim, sus4, 7, maj7, m7), with drum hits filtered out.
+- **Chords:** recent chroma compared with chord templates (major, minor, dim, aug, sus2, sus4, 7, maj7, m7), with drum hits filtered out. The bass note weighs in, so a loud melody doesn't pull the chord off.
+- **Chart:** the chroma is averaged over each tracked beat, every chord is scored on every beat, and a Viterbi search finds the most likely chord path through the song (changing chord costs a little, more so away from beat 1). Trying each possible downbeat, the one where the chords change on bar lines wins, which also fixes the beat dots and can tell 3/4 from 4/4. The loop is the shortest run of bars (1–8) that repeats.
+- **Tuning:** spectral peaks' average offset from the nearest semitone (a circular mean), so a song tuned to A4 = 446 Hz still lands on the right notes.
+- **Key change:** the last 30 s get their own key estimate; the chords then settle close calls (G vs D major: is there a C or a C♯?).
+
+- **Listening:** pauses and the silence between songs are left out of the analysis, so they don't blur tempo or key, and the beat dots re-sync right after. Quiet input is boosted for analysis (up to ×40). When there's no song info, a gap followed by a different tempo or key counts as a new song.
 
 These are estimates, like a DJ app's. Very busy mixes, songs without a clear beat, or unusual chords can confuse them.
 

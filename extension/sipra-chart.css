@@ -1,0 +1,41 @@
+/* Sipra chord chart (website + extension). Uses the host page's tokens. */
+.sc { --sc-inset: var(--surface-inset, var(--inset, rgba(127, 127, 127, .12))); }
+.sc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sc-title { font-size: 12.5px; font-weight: 800; color: var(--muted); }
+.sc-tools { display: flex; gap: 6px; }
+.sc-btn {
+  font: inherit; font-size: 12px; font-weight: 800; height: 28px; padding: 0 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--text);
+}
+.sc-btn:hover:not(:disabled) { border-color: var(--text); }
+.sc-btn:disabled { opacity: .45; cursor: default; }
+.sc-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #000); }
+.sc-loop { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 10px 0 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--accent); }
+.sc-loop span { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.sc-loop b { font-size: 16px; font-weight: 900; letter-spacing: -.01em; }
+.sc-loop small { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--muted); }
+.sc-meta { margin: 8px 0 0; font-family: "Geist Mono", ui-monospace, monospace; font-size: 11.5px; color: var(--muted); min-height: 1em; }
+.sc-bars {
+  list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px;
+  grid-template-columns: repeat(var(--sc-per-row, 4), minmax(0, 1fr));
+  max-height: 232px; overflow-y: auto; scrollbar-width: thin;
+}
+.sc-bar { position: relative; display: flex; gap: 2px; min-height: 46px; padding: 16px 4px 4px; border-radius: 8px; background: var(--sc-inset); border-left: 2px solid transparent; }
+.sc-bar.loop-start { border-left-color: var(--accent); }
+.sc-bar i { position: absolute; top: 3px; left: 6px; font: 9.5px "Geist Mono", ui-monospace, monospace; font-style: normal; color: var(--faint); }
+.sc-bar.now { background: var(--accent); }
+.sc-bar.now i, .sc-bar.now .sc-c { color: var(--on-accent, #000); }
+.sc-bar.pickup { opacity: .6; }
+.sc-c { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-c + .sc-c { border-left: 1px dashed var(--line-strong); }
+.sc-nc { font-size: 11px; font-weight: 700; color: var(--faint); }
+.sc-empty { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+.sc-empty[hidden], .sc-loop[hidden] { display: none; }
+/* Charts read four bars to a line; only very narrow panels drop to two. */
+@media (max-width: 460px) {
+  .sc-bar { min-height: 40px; padding: 14px 2px 3px; }
+  .sc-c { font-size: 12.5px; }
+}
+@media (max-width: 300px) {
+  .sc-bars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

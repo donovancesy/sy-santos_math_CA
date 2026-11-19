@@ -5,16 +5,18 @@
 (() => {
   "use strict";
   const Engine = window.SipraEngine;
-  if (!Engine) return;
+  const Listener = window.SipraListener;
+  if (!Engine || !Listener) return;
   const NOTE = Engine.NOTE_NAMES;
-  const RATIOS = { maj: "4 : 5 : 6", min: "10 : 12 : 15", dim: "≈ 5 : 6 : 7", sus4: "6 : 8 : 9", "7": "≈ 4 : 5 : 6 : 7", maj7: "8 : 10 : 12 : 15", m7: "10 : 12 : 15 : 18" };
+  const RATIOS = { maj: "4 : 5 : 6", min: "10 : 12 : 15", dim: "≈ 5 : 6 : 7", sus4: "6 : 8 : 9", "7": "≈ 4 : 5 : 6 : 7", maj7: "8 : 10 : 12 : 15", m7: "10 : 12 : 15 : 18", sus2: "8 : 9 : 12", aug: "16 : 20 : 25" };
   const $ = (id) => document.getElementById(id);
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const fmt = (s) => (!Number.isFinite(s) || s < 0 ? "0:00" : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`);
   const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const el = {
-    tabBtn: $("liveTabBtn"), micBtn: $("liveMicBtn"), stopBtn: $("liveStopBtn"),
+    tabBtn: $("liveTabBtn"), micBtn: $("liveMicBtn"), stopBtn: $("liveStopBtn"), newSongBtn: $("liveNewSongBtn"),
+    input: $("liveInput"), songNo: $("liveSongNo"),
     eq: $("liveEq"), status: $("liveStatus"), clock: $("liveClock"), hint: $("liveHint"),
     level: $("liveLevel"), peak: $("livePeak"), db: $("liveDb"),
     np: $("liveNp"), art: $("liveArt"), artEq: $("liveArtEq"), title: $("liveTitle"), artist: $("liveArtist"),
@@ -32,6 +34,10 @@
     glyph: document.querySelector(".track-glyph"), vu: $("deckVu"), playBtn: $("playBtn"), metricBpm: $("metricBpm")
   };
   if (!el.tabBtn) return;
+  // Bar-by-bar chord chart (js/sipra-chart.js).
+  const chartView = window.SipraChart && $("liveChart")
+    ? window.SipraChart.mount($("liveChart"), { onCopy: (_t, ok) => toast(ok ? "Chart copied. Paste it anywhere." : "Couldn't copy the chart.") })
+    : null;
 
   let colors = null;
   function readColors() {
@@ -67,8 +73,57 @@
   const live = {
     stream: null, ctx: null, analyser: null, freq: null, time: null, engine: null, offset: null,
     startedAt: 0, result: null, chordSig: "", lastChord: "", lastBeat: -1, lastNoteAt: 0, note: null,
-    levelDb: null, peakLevel: 0, silent: 0, takes: 0, trackId: null
+    levelDb: null, peakLevel: 0, silent: 0, takes: 0, trackId: null,
+    epoch: 0, kind: null, saved: false, trackTitle: "", deviceId: null
   };
+  try { live.deviceId = localStorage.getItem("sipra-mic") || null; } catch (e) {}
+
+  function toast(msg) {
+    const t = $("toast");
+    if (!t) return;
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(t._sipra); t._sipra = setTimeout(() => { t.hidden = true; }, 3600);
+  }
+
+  // A song ended (new song detected, Spotify changed track, or "New song" tapped):
+  // keep its numbers in Stats unless they were already added.
+  function onSongChange(prev, reason) {
+    const name = live.trackTitle || `Live ${live.takes + 1}`;
+    if (!live.saved && window.MBMApp && prev && prev.seconds >= 15) {
+      live.takes += 1;
+      window.MBMApp.addTrack({ name, duration: Math.round(prev.seconds), bpm: prev.bpm, key: prev.key, timeSignature: prev.meter });
+    }
+    const label = `${prev.bpm % 1 ? prev.bpm.toFixed(1) : prev.bpm} BPM · ${NOTE[prev.key.tonicPc]} ${prev.key.mode}`;
+    if (reason === "auto") toast(`New song detected. Saved the last one (${label}) to Stats.`);
+    else if (reason === "manual") toast(`Starting fresh. Saved the last song (${label}) to Stats.`);
+    live.saved = false;
+    live.result = null; live.chordSig = ""; live.lastBeat = -1;
+    if (!SP || !SP.state.linked) live.trackTitle = "";
+    renderResult(); renderChord(null); el.save.disabled = true;
+    if (chartView) chartView.clear();
+    renderSongNo();
+  }
+  function renderSongNo() {
+    if (!el.songNo) return;
+    const n = live.engine ? live.engine.songs : 0;
+    el.songNo.hidden = !live.engine || n < 2;
+    el.songNo.textContent = `song ${n}`;
+  }
+
+  async function fillInputs() {
+    if (!el.input || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    const devices = (await navigator.mediaDevices.enumerateDevices().catch(() => [])).filter((d) => d.kind === "audioinput");
+    el.input.innerHTML = "";
+    devices.forEach((d, i) => {
+      const o = document.createElement("option");
+      o.value = d.deviceId;
+      o.textContent = d.label || `Input ${i + 1}`;
+      el.input.append(o);
+    });
+    const current = live.stream && live.stream.getAudioTracks()[0] && live.stream.getAudioTracks()[0].getSettings().deviceId;
+    if (current) el.input.value = current;
+    el.input.hidden = devices.length < 2;
+  }
   function setStatus(t, k) { el.status.textContent = t; el.status.dataset.state = k; }
   function setHint(h) { el.hint.innerHTML = h; }
   const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
@@ -79,7 +134,7 @@
     try { return policy.allowsFeature(kind === "tab" ? "display-capture" : "microphone"); } catch (e) { return true; }
   }
 
-  async function start(kind) {
+  async function start(kind, deviceId = live.deviceId) {
     if (live.stream) stop();
     if (!captureAllowed(kind)) { setStatus("Blocked", "warn"); setHint(BLOCKED); return; }
     let stream;
@@ -103,7 +158,14 @@
         stream.getVideoTracks().forEach((t) => { t.enabled = false; });
       } else {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("unsupported");
-        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+        if (deviceId) audio.deviceId = { exact: deviceId };
+        try { stream = await navigator.mediaDevices.getUserMedia({ audio }); }
+        catch (e) {
+          if (!deviceId || (e && e.name === "NotAllowedError")) throw e;
+          delete audio.deviceId; // the saved input was unplugged: use the default one
+          stream = await navigator.mediaDevices.getUserMedia({ audio });
+        }
       }
     } catch (error) {
       setStatus("Blocked", "warn");
@@ -117,9 +179,14 @@
     analyser.fftSize = 8192;
     analyser.smoothingTimeConstant = 0.55;
     source.connect(analyser); // not sent to the speakers: Spotify already plays them
-    const engine = new Engine(ctx.sampleRate);
+    // With a linked Spotify account the track name says when songs change;
+    // otherwise Sipra works it out from gaps + tempo/key.
+    const engine = new Listener(ctx.sampleRate, { onSongChange, autoSplit: !(SP && SP.state.linked) });
     const onChunk = (chunk) => {
-      engine.push(chunk);
+      const used = engine.push(chunk);
+      if (engine.epoch !== live.epoch) { live.epoch = engine.epoch; live.offset = null; }
+      if (!used) return;
+      // Map analysis time (seconds of music heard) to the audio clock.
       const off = ctx.currentTime - engine.seconds;
       live.offset = live.offset === null ? off : Math.min(live.offset + 0.002, off);
     };
@@ -141,23 +208,31 @@
       };
     }
     Object.assign(live, {
-      stream, ctx, analyser, engine, offset: null,
+      stream, ctx, analyser, engine, offset: null, epoch: engine.epoch, kind,
       freq: new Float32Array(analyser.frequencyBinCount), time: new Float32Array(analyser.fftSize),
-      startedAt: performance.now(), result: null, chordSig: "", lastBeat: -1, silent: 0, peakLevel: 0
+      startedAt: performance.now(), result: null, chordSig: "", lastBeat: -1, silent: 0, peakLevel: 0, saved: false
     });
     stream.getAudioTracks()[0].addEventListener("ended", stop);
     el.tabBtn.hidden = true; el.micBtn.hidden = true; el.stopBtn.hidden = false; el.save.disabled = true;
+    if (el.newSongBtn) el.newSongBtn.hidden = false;
     setStatus("Listening", "off");
-    setHint(kind === "tab" ? "Listening. Numbers appear after ~6 s and get steadier as the song plays." : "Listening through the mic. Keep it near the speaker.");
-    renderResult(); renderChord(null);
+    setHint(kind === "tab"
+      ? "Listening. Numbers appear after ~6 s and get steadier as the song plays. Sipra notices when the next song starts."
+      : "Listening through the mic. Keep it near the speaker. On Windows you can pick <strong>Stereo Mix</strong> as the input to hear the computer directly.");
+    if (kind === "mic") fillInputs(); else if (el.input) el.input.hidden = true;
+    renderResult(); renderChord(null); renderSongNo();
+    if (chartView) chartView.clear();
   }
 
   function stop() {
     if (!live.stream) return;
     live.stream.getTracks().forEach((t) => t.stop());
     if (live.ctx) live.ctx.close().catch(() => {});
-    Object.assign(live, { stream: null, ctx: null, analyser: null, engine: null });
+    Object.assign(live, { stream: null, ctx: null, analyser: null, engine: null, kind: null });
     el.tabBtn.hidden = false; el.micBtn.hidden = false; el.stopBtn.hidden = true;
+    if (el.newSongBtn) el.newSongBtn.hidden = true;
+    if (el.input) el.input.hidden = true;
+    renderSongNo();
     setStatus("Off", "off");
     setHint(live.result && live.result.ready ? "Stopped. Tap <strong>Add to Stats</strong> to keep this song's numbers." : "Share Spotify with <strong>audio on</strong>, or use the mic.");
     setBars(el.eq, null); setBars(el.artEq, null);
@@ -167,6 +242,16 @@
   el.tabBtn.addEventListener("click", () => start("tab"));
   el.micBtn.addEventListener("click", () => start("mic"));
   el.stopBtn.addEventListener("click", stop);
+  if (el.newSongBtn) el.newSongBtn.addEventListener("click", () => {
+    if (!live.engine) return;
+    live.engine.newSong("manual");
+    if (!live.result) setStatus("Listening", "off");
+  });
+  if (el.input) el.input.addEventListener("change", () => {
+    live.deviceId = el.input.value || null;
+    try { if (live.deviceId) localStorage.setItem("sipra-mic", live.deviceId); } catch (e) {}
+    start("mic", live.deviceId);
+  });
 
   el.save.addEventListener("click", () => {
     const r = live.result;
@@ -179,6 +264,7 @@
       bpm: r.bpm, key: { tonicPc: r.key.tonicPc, mode: r.key.mode, confidence: r.key.confidence }, timeSignature: r.meter
     });
     el.save.disabled = true;
+    live.saved = true;
     setHint('Added to <a href="#session">Stats</a>.');
   });
 
@@ -188,19 +274,28 @@
     if (!engine) return;
     const sp = window.SipraSpotify && window.SipraSpotify.state.track;
     if (sp && !sp.playing) return;
-    if (engine.energy < 0.0006) {
-      live.silent += 1.5;
-      if (live.silent >= 8) { setStatus("No sound", "warn"); setHint("Nothing is playing. Press play in Spotify. If it is playing, share again with <strong>audio on</strong>."); }
+    if (engine.inGap) {
+      if (engine.silentSeconds >= 8) {
+        live.silent = engine.silentSeconds;
+        setStatus("No sound", "warn");
+        setHint("Nothing is playing. Press play in Spotify. If it is playing, share again with <strong>audio on</strong>.");
+      } else if (live.result && live.result.ready) setStatus("Paused", "off");
       return;
     }
-    live.silent = 0;
+    if (live.silent) { live.silent = 0; setHint(""); }
     const r = engine.update();
+    renderSongNo();
     if (!r.ready) { setStatus(`Listening ${Math.floor(r.seconds)}s`, "off"); return; }
     if (!live.result || !live.result.ready) setHint("Every number shows its math underneath. Tap <strong>Learn</strong> on any of them for the full lesson.");
+    if (live.kind === "mic" && engine.tooQuiet) setHint("The mic is very quiet. Move it closer to the speaker or turn the volume up.");
     live.result = r;
     renderResult();
-    setStatus("Live", "live");
-    el.save.disabled = false;
+    if (chartView) {
+      const t = SP && SP.state.track;
+      chartView.update(r, { title: live.trackTitle || (t && t.title) || "", artist: t ? t.artist : "" });
+    }
+    setStatus(engine.probing ? "Live · checking song" : "Live", "live");
+    el.save.disabled = live.saved;
   }, 1500);
 
   function renderResult() {
@@ -215,10 +310,13 @@
     el.bpm.textContent = r.bpm % 1 ? r.bpm.toFixed(1) : String(r.bpm);
     el.bpmMath.textContent = `${r.compound ? "♩. " : ""}T = 60/${Math.round(r.bpm)} = ${T.toFixed(3)} s${r.bpm >= 140 ? ` · or half-time ${(r.bpm / 2).toFixed(0)}` : r.bpm < 80 ? ` · or double-time ${(r.bpm * 2).toFixed(0)}` : ""}`;
     el.bpmConf.style.width = `${Math.round(r.bpmConfidence * 100)}%`;
-    const name = NOTE[r.key.tonicPc], n = r.key.tonicPc - 9;
-    el.key.textContent = `${name} ${r.key.mode}`;
-    el.keyMath.innerHTML = `home note ${name}4: 440·2<sup>${n}/12</sup> = ${(440 * Math.pow(2, n / 12)).toFixed(1)} Hz`;
-    el.keyConf.style.width = `${Math.round(r.key.confidence * 100)}%`;
+    // After a key change, show the key we're in now (and where it came from).
+    const k = r.keyNow || r.key;
+    const name = NOTE[k.tonicPc], n = k.tonicPc - 9;
+    el.key.textContent = `${name} ${k.mode}`;
+    el.keyMath.innerHTML = (r.keyNow ? `key change from ${NOTE[r.key.tonicPc]} ${r.key.mode} · ` : "") +
+      `home note ${name}4: 440·2<sup>${n}/12</sup> = ${(440 * Math.pow(2, n / 12)).toFixed(1)} Hz`;
+    el.keyConf.style.width = `${Math.round(k.confidence * 100)}%`;
     el.meter.textContent = r.meterReady ? r.meter : "…";
     el.feel.textContent = !r.meterReady ? "" : r.compound ? `${r.meter}: ${r.beatsPerBar} big beats × 3 eighths · ♩. = ${Math.round(r.bpm)}, ♪ = ${Math.round(r.pulseBpm)}`
       : r.feel === "swing" ? "swing feel: long–short eighths ≈ 2 : 1" : `${r.beatsPerBar} beats per bar`;
@@ -292,10 +390,13 @@
       el.artist.textContent = [t.artist, t.album].filter(Boolean).join(" · ");
       if (t.art && el.art.getAttribute("src") !== t.art) { el.art.src = t.art; el.art.hidden = false; }
       el.device.textContent = t.device ? `on ${t.device}` : "";
+      if (live.engine) live.engine.autoSplit = false; // the track name tells us
       if (t.id !== live.trackId) {
-        if (live.trackId && live.engine) { live.engine.reset(); live.result = null; live.chordSig = ""; renderResult(); renderChord(null); }
+        // Saves the previous song under its real name, then starts fresh.
+        if (live.trackId && live.engine) live.engine.newSong("spotify");
         live.trackId = t.id;
       }
+      live.trackTitle = t.title;
     });
     SP.init();
   }
@@ -419,7 +520,7 @@
     const r = live.result;
     if (!r || !r.ready || live.offset === null) return;
     const sp = spotifyPosition();
-    if (sp && !sp.playing) { [...el.pulse.children].forEach((d) => d.classList.remove("on")); return; }
+    if ((sp && !sp.playing) || (live.engine && live.engine.inGap)) { [...el.pulse.children].forEach((d) => d.classList.remove("on")); return; }
     // Beat k after the last tracked beat lands at lastBeatTime + k·T (engine clock).
     const T = r.beatPeriod, B = r.beatsPerBar || 4;
     const latency = (live.ctx.outputLatency || 0) + (live.ctx.baseLatency || 0);
