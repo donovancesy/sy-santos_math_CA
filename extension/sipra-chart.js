@@ -21,10 +21,11 @@
       </div>
       <p class="sc-loop" hidden></p>
       <p class="sc-meta"></p>
+      <p class="sc-joined" hidden></p>
       <ol class="sc-bars" aria-label="Chords, bar by bar"></ol>
       <p class="sc-empty">The chart fills in bar by bar once the beat is found.</p>`;
     const el = {
-      loop: root.querySelector(".sc-loop"), meta: root.querySelector(".sc-meta"),
+      loop: root.querySelector(".sc-loop"), meta: root.querySelector(".sc-meta"), joined: root.querySelector(".sc-joined"),
       bars: root.querySelector(".sc-bars"), empty: root.querySelector(".sc-empty"),
       names: root.querySelector('[data-sc="names"]'), copy: root.querySelector('[data-sc="copy"]')
     };
@@ -47,7 +48,11 @@
     el.copy.addEventListener("click", async () => {
       const r = last.result;
       if (!r || !r.chart) return;
-      const text = global.SipraEngine.chartText(r.chart, metaFor(r, last.meta));
+      let text = global.SipraEngine.chartText(r.chart, metaFor(r, last.meta));
+      const j = last.meta.joinedAt;
+      if (Number.isFinite(j) && j > 4) text += `
+
+(Chart starts ${Math.floor(j / 60)}:${String(Math.floor(j % 60)).padStart(2, "0")} into the song.)`;
       let ok = false;
       try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
         // Fallback for pages without clipboard permission.
@@ -80,7 +85,7 @@
       const bars = chart ? chart.bars : [];
       el.copy.disabled = !bars.length;
       el.empty.hidden = bars.length > 0;
-      if (!chart) { el.bars.innerHTML = ""; el.loop.hidden = true; el.meta.textContent = ""; sig = ""; return; }
+      if (!chart) { el.bars.innerHTML = ""; el.loop.hidden = true; el.joined.hidden = true; el.meta.textContent = ""; sig = ""; return; }
 
       // Loop line: the progression that keeps coming back.
       const loop = chart.loop;
@@ -103,6 +108,12 @@
       if (r.tuning) facts.push(Math.abs(r.tuning.cents) >= 5 ? `tuned ${r.tuning.cents > 0 ? "+" : ""}${r.tuning.cents}¢ (A4 = ${r.tuning.a4.toFixed(1)} Hz)` : "A4 = 440 Hz");
       if (chart.changesPerMinute !== null) facts.push(`${chart.changesPerMinute} changes/min`);
       el.meta.textContent = facts.join(" · ");
+      // Joined partway through: say so, so nobody mistakes bar 1 for the top of the song.
+      const j = meta.joinedAt;
+      if (Number.isFinite(j) && j > 4) {
+        el.joined.textContent = `Started listening at ${Math.floor(j / 60)}:${String(Math.floor(j % 60)).padStart(2, "0")}, so the chart begins there, not at the top of the song. Replay the song from the start for the whole chart.`;
+        el.joined.hidden = false;
+      } else el.joined.hidden = true;
 
       // Bars: rebuild only when something changed.
       const s = (roman ? "R" : "N") + bars.map((b) => b.number + ":" + b.chords.map((c) => c.name + c.beats).join(",")).join("|");

@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="sidepanel.css">
   <link rel="stylesheet" href="sipra-chart.css">
+  <link rel="stylesheet" href="sipra-chordviz.css">
+  <link rel="stylesheet" href="sipra-lyrics.css">
   <script src="theme-init.js"></script>
 </head>
 <body>
@@ -20,6 +22,10 @@
       <span class="brand-name">Sipra</span>
     </div>
     <div class="top-actions">
+      <button class="map-btn" type="button" data-open-map aria-label="Open the Math map: labs and lessons" title="Math map: the math behind music, with labs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>
+        Math map
+      </button>
       <button class="icon-btn" type="button" data-learn="" aria-label="Open all lessons" title="Lessons">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg>
       </button>
@@ -75,10 +81,14 @@
       </div>
       <code class="chord-math" id="chordMath">root + {0, 4, 7} semitones</code>
       <ol class="chord-line" id="chordLine" aria-label="Recent chords"></ol>
+      <div class="chord-viz" id="chordViz" aria-label="The chord on a piano or guitar"></div>
     </section>
 
     <!-- Chord chart: the song's chords bar by bar -->
     <section class="card" id="chartCard" aria-label="Chord chart, bar by bar"></section>
+
+    <!-- Lyrics that follow the song -->
+    <section class="card" id="lyricsCard" aria-label="Lyrics"></section>
 
     <section class="grid" aria-label="Song math">
       <article class="tile">
@@ -86,6 +96,10 @@
         <p class="big"><span id="bpmVal">—</span><small>BPM</small></p>
         <code id="bpmMath">T = 60 / BPM</code>
         <code class="alt" id="bpmAlt"></code>
+        <div class="tempo-fix" role="group" aria-label="Fix the tempo">
+          <button type="button" data-tempo-fix="0.5" title="Halve the tempo (Sipra counted eighth notes)">½×</button>
+          <button type="button" data-tempo-fix="2" title="Double the tempo (Sipra counted half notes)">2×</button>
+        </div>
         <div class="conf" aria-hidden="true"><i id="bpmConf"></i></div>
       </article>
       <article class="tile">
@@ -116,16 +130,6 @@
       <canvas id="scope" class="scope" aria-label="Live waveform"></canvas>
     </section>
 
-    <section class="card note" aria-label="Loudest note right now">
-      <div class="note-big"><span id="noteName">—</span><sup id="noteOct"></sup></div>
-      <div class="note-math">
-        <p><span class="lbl">n</span><code id="noteN">—</code></p>
-        <p><span class="lbl">f</span><code id="noteF">— Hz</code></p>
-        <p><span class="lbl">cents</span><code id="noteCents">—</code></p>
-      </div>
-      <button class="learn note-learn" type="button" data-learn="pitch">Learn</button>
-    </section>
-
     <section class="card" aria-label="Session statistics">
       <div class="card-head">
         <h2>Session</h2>
@@ -145,12 +149,24 @@
       <ol class="tracks" id="tracks"></ol>
       <p class="empty" id="emptyTracks">Songs you play show up here.</p>
     </section>
+
+    <!-- The rest of the math: labs and the concept map live on the Sipra website -->
+    <section class="card map-card" aria-label="Math map">
+      <div class="card-head"><h2>The math behind it</h2></div>
+      <p class="map-copy">Periodicity, equal temperament, ratios, Fourier analysis, LCM, logarithms and statistics, each with a lab: add a song, play a keyboard, tap a tempo, hear polyrhythms.</p>
+      <div class="map-actions">
+        <button class="btn btn-primary" type="button" data-open-map>Open the Math map</button>
+        <button class="btn btn-ghost" type="button" data-learn="">Lessons</button>
+      </div>
+    </section>
   </main>
 
   <script src="analysis.js"></script>
   <script src="sipra-rhythm.js"></script>
   <script src="sipra-engine.js"></script>
   <script src="sipra-chart.js"></script>
+  <script src="sipra-chordviz.js"></script>
+  <script src="sipra-lyrics.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

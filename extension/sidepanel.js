@@ -9,12 +9,49 @@
 
   const NOTE_NAMES = window.SipraEngine.NOTE_NAMES;
   const SPOTIFY = "https://open.spotify.com/";
-  const UPDATE_MS = 1500;
+  const UPDATE_MS = 1000;
   const RATIOS = { maj: "4 : 5 : 6", min: "10 : 12 : 15", dim: "≈ 5 : 6 : 7", sus4: "6 : 8 : 9", "7": "≈ 4 : 5 : 6 : 7", maj7: "8 : 10 : 12 : 15", m7: "10 : 12 : 15 : 18", sus2: "8 : 9 : 12", aug: "16 : 20 : 25" };
 
   const $ = (id) => document.getElementById(id);
   // Bar-by-bar chord chart (sipra-chart.js).
   const chartView = window.SipraChart && $("chartCard") ? window.SipraChart.mount($("chartCard")) : null;
+  // The chord on a piano or guitar (sipra-chordviz.js).
+  const chordViz = window.SipraChordViz && $("chordViz") ? window.SipraChordViz.mount($("chordViz")) : null;
+  // Synced lyrics (sipra-lyrics.js), following the Spotify tab's song and time.
+  if (window.SipraLyrics && $("lyricsCard")) {
+    window.SipraLyrics.mount($("lyricsCard"), {
+      getTrack: () => {
+        const np = state.np;
+        if (!np || !np.title) return null;
+        return { title: np.title, artist: np.artist, album: np.album, duration: np.duration, position: currentPosition(), playing: np.playing };
+      },
+      noTrackHint: "Lyrics follow the song once something is playing in the Spotify tab."
+    });
+  }
+  // Tempo fix: ½× or 2× when Sipra counts eighth notes or half notes,
+  // remembered per song.
+  const FIX_KEY = "sipra-tempo-fix";
+  const readFixes = () => { try { return JSON.parse(localStorage.getItem(FIX_KEY) || "{}"); } catch (e) { return {}; } };
+  function songKey() { return state.np && state.np.title ? state.np.title + " — " + (state.np.artist || "") : null; }
+  function restoreFix() {
+    const k = songKey(), s = k ? readFixes()[k] : null;
+    if (state.engine && s && state.engine.tempoScale !== s) state.engine.setTempoScale(s);
+  }
+  document.addEventListener("click", (event) => {
+    const b = event.target.closest && event.target.closest("[data-tempo-fix]");
+    if (!b || !state.engine) return;
+    const want = Number(b.dataset.tempoFix), s = state.engine.tempoScale === want ? 1 : want;
+    state.engine.setTempoScale(s);
+    const k = songKey();
+    if (k) {
+      const fixes = readFixes();
+      if (s === 1) delete fixes[k]; else fixes[k] = s;
+      try { localStorage.setItem(FIX_KEY, JSON.stringify(fixes)); } catch (e) {}
+    }
+    state.result = null; state.chordKey = "";
+    if (chartView) chartView.clear();
+    renderResult();
+  });
   const el = {
     art: $("art"), artImg: $("artImg"), artEq: $("artEq"), title: $("npTitle"), artist: $("npArtist"), status: $("status"),
     progress: $("progressFill"), pos: $("posText"), dur: $("durText"), level: $("levelFill"), levelPeak: $("levelPeak"),
@@ -24,7 +61,6 @@
     key: $("keyVal"), keyMath: $("keyMath"), keyConf: $("keyConf"),
     meter: $("meterVal"), meterFeel: $("meterFeel"), pulse: $("pulse"), beatNow: $("beatNow"), beatTotal: $("beatTotal"),
     spectrum: $("spectrum"), scope: $("scope"), peak: $("peakText"),
-    noteName: $("noteName"), noteOct: $("noteOct"), noteN: $("noteN"), noteF: $("noteF"), noteCents: $("noteCents"),
     sMean: $("sMean"), sMedian: $("sMedian"), sMode: $("sMode"), sStd: $("sStd"),
     tracks: $("tracks"), empty: $("emptyTracks"), clear: $("clearBtn"), theme: $("themeToggle"),
     brand: document.querySelector(".brand-mark")
@@ -58,6 +94,22 @@
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem("sipra-theme", next); } catch (e) {}
     readColors();
+  });
+  // Math map: the concept map and labs on the Sipra website. The song's numbers
+  // go in the #fragment, which stays in the browser (never sent to the server).
+  const MATH_MAP_URL = "https://donovancesy.github.io/sy-santos_math_CA/math.html";
+  document.addEventListener("click", (event) => {
+    const btn = event.target.closest && event.target.closest("[data-open-map]");
+    if (!btn) return;
+    const r = state.result && state.result.ready ? state.result : null;
+    let url = MATH_MAP_URL;
+    if (r) {
+      const k = r.keyNow || r.key;
+      const p = new URLSearchParams({ bpm: String(r.bpm), tonic: String(k.tonicPc), mode: k.mode, meter: r.meterReady ? r.meter : "" });
+      if (state.np && state.np.title) p.set("title", state.np.title);
+      url += "#song&" + p.toString();
+    }
+    chrome.tabs.create({ url });
   });
   document.addEventListener("click", (event) => {
     const btn = event.target.closest && event.target.closest("[data-learn]");
@@ -110,7 +162,15 @@
       if (state.trackId) finishTrack();
       state.trackId = id;
       resetAnalysis();
+      state.joinedAt = Number.isFinite(info.position) ? info.position : null;
+      restoreFix();
+    } else if (id && id === state.trackId && Number.isFinite(info.position) && Number.isFinite(state.lastPos) && state.lastPos > 12 && info.position < 4) {
+      // Played again from the start: the chart starts over too.
+      finishTrack();
+      resetAnalysis();
+      state.joinedAt = 0;
     }
+    if (Number.isFinite(info.position)) state.lastPos = info.position;
     state.np = info;
     if (state.engine) state.engine.autoSplit = !info.title;
     el.title.textContent = info.title || "Nothing playing";
@@ -205,6 +265,8 @@
       state.engine = new window.SipraListener(ctx.sampleRate, { autoSplit: !(state.np && state.np.title) });
       state.streamOffset = null;
       state.epoch = state.engine.epoch;
+      restoreFix(); // a tempo fix saved for this song applies right away
+      state.joinedAt = Number.isFinite(currentPosition()) ? currentPosition() : state.joinedAt;
       tap.port.onmessage = (event) => {
         const engine = state.engine;
         if (!engine) return;
@@ -280,7 +342,7 @@
     if (!r.ready) { setStatus(`Listening ${Math.floor(r.seconds)}s`, "off"); return; }
     state.result = r;
     renderResult();
-    if (chartView) chartView.update(r, { title: state.np && state.np.title, artist: state.np && state.np.artist });
+    if (chartView) chartView.update(r, { title: state.np && state.np.title, artist: state.np && state.np.artist, joinedAt: state.joinedAt });
     setStatus("Live", "live");
     publishLive();
   }, UPDATE_MS);
@@ -294,9 +356,11 @@
       el.beatNow.textContent = "—"; el.beatTotal.textContent = "/ —";
       return;
     }
+    const scale = r.tempoScale || 1;
+    document.querySelectorAll("[data-tempo-fix]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.tempoFix) === scale)));
     el.bpm.textContent = r.bpm % 1 ? r.bpm.toFixed(1) : String(r.bpm);
     el.bpmMath.textContent = `${r.compound ? "♩. " : ""}T = 60/${Math.round(r.bpm)} = ${(60 / r.bpm).toFixed(3)}s`;
-    el.bpmAlt.textContent = r.bpm >= 140 ? `or half-time ${(r.bpm / 2).toFixed(0)}` : r.bpm < 80 ? `or double-time ${(r.bpm * 2).toFixed(0)}` : "";
+    el.bpmAlt.textContent = scale !== 1 ? `heard ${Math.round(r.autoBpm)} → ${scale === 0.5 ? "½" : "2"}×` : "sounds off? fix it:";
     el.bpmConf.style.width = `${Math.round(r.bpmConfidence * 100)}%`;
     // After a key change, show the key we're in now.
     const k = r.keyNow || r.key;
@@ -319,6 +383,7 @@
     const keyStr = c ? `${c.name}|${c.roman}|${info.history.length}` : "none";
     if (keyStr === state.chordKey) return;
     state.chordKey = keyStr;
+    if (chordViz) chordViz.show(c ? { root: c.root, quality: c.quality, tones: c.tones, name: c.name } : null);
     if (!c) {
       el.chordName.textContent = "—";
       el.chordRoman.textContent = "—";
@@ -524,33 +589,6 @@
     el.levelPeak.style.left = `${(state.peakLevel * 100).toFixed(1)}%`;
   }
 
-  function updateNote(now) {
-    const cap = state.cap;
-    if (!cap || now - state.lastNoteAt < 150) return;
-    state.lastNoteAt = now;
-    const freq = cap.freq, binHz = cap.ctx.sampleRate / cap.analyser.fftSize;
-    const lo = Math.floor(70 / binHz), hi = Math.ceil(1200 / binHz);
-    let best = -1, bestDb = -Infinity;
-    for (let i = lo; i <= hi; i += 1) if (freq[i] > bestDb) { bestDb = freq[i]; best = i; }
-    if (best < 1 || bestDb < -62) {
-      state.note = null;
-      el.noteName.textContent = "—"; el.noteOct.textContent = ""; el.noteN.textContent = "—"; el.noteF.textContent = "— Hz"; el.noteCents.textContent = "—";
-      return;
-    }
-    const a = freq[best - 1], b = freq[best], c = freq[best + 1];
-    const f = (best + clamp((a - c) / (2 * (a - 2 * b + c) || 1), -0.5, 0.5)) * binHz;
-    const exact = 12 * Math.log2(f / 440);
-    const n = Math.round(exact);
-    const cents = Math.round((exact - n) * 100);
-    const midi = 69 + n;
-    state.note = { f, n, cents, name: NOTE_NAMES[((midi % 12) + 12) % 12], octave: Math.floor(midi / 12) - 1 };
-    el.noteName.textContent = state.note.name;
-    el.noteOct.textContent = String(state.note.octave);
-    el.noteN.textContent = n > 0 ? `+${n}` : String(n);
-    el.noteF.textContent = `${f.toFixed(1)} Hz`;
-    el.noteCents.textContent = `${cents >= 0 ? "+" : ""}${cents}¢`;
-  }
-
   function updateBeats() {
     const r = state.result, cap = state.cap;
     if (cap && r && r.ready && state.streamOffset !== null && (!state.np || state.np.playing) && !(state.engine && state.engine.inGap)) {
@@ -586,7 +624,6 @@
     drawSpectrum();
     updateMotion();
     drawScope();
-    updateNote(now);
     updateBeats();
     updateProgress();
     if (state.engine) renderChord(state.engine.chordInfo());
