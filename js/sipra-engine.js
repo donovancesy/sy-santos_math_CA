@@ -780,6 +780,21 @@
       const s = scale === 0.5 || scale === 2 ? scale : 1;
       if (s === this.tempoScale) return;
       this.tempoScale = s;
+      this.resetChart();
+    }
+
+    // Tapped tempo (the beat editor): the tracker uses this BPM instead of
+    // searching for one, and still finds where the beats land. null = automatic.
+    setManualTempo(bpm) {
+      const b = Number.isFinite(bpm) && bpm >= 30 && bpm <= 300 ? Math.round(bpm * 10) / 10 : null;
+      if (b === this.rhythm.forcedBpm) return;
+      this.rhythm.forcedBpm = b;
+      this.rhythm.period = null;
+      this.tempoScale = 1;
+      this.resetChart();
+    }
+
+    resetChart() {
       this.grid = [];
       this.frozen = { locked: false, bars: [], untilT: -Infinity, lastLabel: -1, lastNumber: 0, B: 4, changes: 0, startT: null };
       this.tempoLog = [];
@@ -827,7 +842,8 @@
         chroma: this.songChroma.slice(),
         chart: this.chart,
         tuning: this.tuning && this.tuning.clarity > 0.3 ? this.tuning : null,
-        tempo: this.tempoStats()
+        tempo: this.tempoStats(),
+        manualBpm: this.rhythm.forcedBpm || null
       };
       return this.result;
     }
@@ -1030,6 +1046,13 @@
       if (this.probe) this.probe.setTempoScale(scale);
     }
     get tempoScale() { return this.main.tempoScale || 1; }
+
+    /** Tapped tempo for the current song (null = automatic). */
+    setManualTempo(bpm) {
+      this.main.setManualTempo(bpm);
+      if (this.probe) this.probe.setManualTempo(bpm);
+    }
+    get manualBpm() { return this.main.rhythm.forcedBpm || null; }
   }
 
   SipraEngine.NOTE_NAMES = NOTE_NAMES;

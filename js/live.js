@@ -36,11 +36,26 @@
   if (!el.tabBtn) return;
   // Bar-by-bar chord chart (js/sipra-chart.js).
   const chartView = window.SipraChart && $("liveChart")
-    ? window.SipraChart.mount($("liveChart"), { onCopy: (_t, ok) => toast(ok ? "Chart copied. Paste it anywhere." : "Couldn't copy the chart.") })
+    ? window.SipraChart.mount($("liveChart"), {
+      onCopy: (_t, ok) => toast(ok ? "Chart copied. Paste it anywhere." : "Couldn't copy the chart."),
+      onPick: (chord, label) => pinChord(chord, label)
+    })
     : null;
 
   // The chord on a piano or guitar (js/sipra-chordviz.js).
-  const chordViz = window.SipraChordViz && $("liveChordViz") ? window.SipraChordViz.mount($("liveChordViz")) : null;
+  const chordViz = window.SipraChordViz && $("liveChordViz") ? window.SipraChordViz.mount($("liveChordViz"), { onUnpin: () => { if (chartView) chartView.unpick(); } }) : null;
+  const QUALITY_TONES = Object.fromEntries((window.SipraEngine.QUALITIES || []).map((q) => [q.id, q.tones.map(([iv]) => iv)]));
+  // Show a past chord on the piano / guitar (until "Back to live").
+  function pinChord(chord, label) {
+    if (!chordViz || !chord) return;
+    chordViz.pin({ ...chord, tones: chord.tones || QUALITY_TONES[chord.quality] || [0, 4, 7] }, label);
+    const box = $("liveChordViz").getBoundingClientRect();
+    if (box.bottom < 0 || box.top > window.innerHeight) $("liveChordViz").scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  if (el.chordLine) el.chordLine.addEventListener("click", (e) => {
+    const li = e.target.closest && e.target.closest("li[data-root]");
+    if (li) pinChord({ root: Number(li.dataset.root), quality: li.dataset.q, name: li.dataset.name }, "recent");
+  });
   // Synced lyrics (js/sipra-lyrics.js): need the song name and time, which
   // come from a linked Spotify account.
   if (window.SipraLyrics && $("liveLyrics")) {
@@ -71,7 +86,14 @@
     if (chartView) chartView.clear();
     renderResult();
   }
+  // Beat editor: tap along to set the tempo (js/sipra-taptempo.js).
+  const tapTempo = window.SipraTapTempo ? window.SipraTapTempo.attach({
+    tap: document.querySelector("[data-tap-tempo]"), auto: document.querySelector("[data-tap-auto]"), note: el.tempoFixNote,
+    getEngine: () => live.engine, getSongKey: () => live.trackTitle || null,
+    onChange: () => { live.result = null; live.chordSig = ""; live.lastBeat = -1; if (chartView) chartView.clear(); renderResult(); }
+  }) : null;
   function restoreFix() {
+    if (tapTempo) tapTempo.restore();
     if (!live.engine || !live.trackTitle) return;
     const s = readFixes()[live.trackTitle];
     if (s && live.engine.tempoScale !== s) live.engine.setTempoScale(s);
@@ -343,6 +365,8 @@
       const t = SP && SP.state.track;
       chartView.update(r, { title: live.trackTitle || (t && t.title) || "", artist: t ? t.artist : "", joinedAt: live.joinedAt });
     }
+    // Keep the Chord card current even while this tab is in the background.
+    if (live.engine) renderChord(live.engine.chordInfo());
     renderSongMath();
     // Lessons on the Math map page use the last song you listened to.
     try { localStorage.setItem("sipra-web-now", JSON.stringify(liveSnapshot())); } catch (e) {}
@@ -361,7 +385,8 @@
     const T = 60 / r.bpm;
     const scale = r.tempoScale || 1;
     document.querySelectorAll("[data-tempo-fix]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.tempoFix) === scale)));
-    if (el.tempoFixNote) el.tempoFixNote.textContent = scale === 1 ? "sounds off? fix it" : `heard ${Math.round(r.autoBpm)} → ${scale === 0.5 ? "½" : "2"}×`;
+    if (el.tempoFixNote) el.tempoFixNote.textContent = r.manualBpm ? `tapped ${Math.round(r.manualBpm)} BPM` : scale === 1 ? "sounds off? fix it" : `heard ${Math.round(r.autoBpm)} → ${scale === 0.5 ? "½" : "2"}×`;
+    if (tapTempo) tapTempo.render();
     el.bpm.textContent = r.bpm % 1 ? r.bpm.toFixed(1) : String(r.bpm);
     el.bpmMath.textContent = `${r.compound ? "♩. " : ""}T = 60/${Math.round(r.bpm)} = ${T.toFixed(3)} s`;
     el.bpmConf.style.width = `${Math.round(r.bpmConfidence * 100)}%`;
@@ -406,6 +431,8 @@
       const li = document.createElement("li");
       if (i === hist.length - 1 && c && h.name === c.name.split("/")[0]) li.className = "now";
       li.textContent = h.name;
+      li.dataset.root = String(h.root); li.dataset.q = h.quality; li.dataset.name = h.name;
+      li.title = "Tap to see it on the piano / guitar";
       const sp = document.createElement("span"); sp.textContent = h.roman || "";
       li.append(sp);
       el.chordLine.append(li);

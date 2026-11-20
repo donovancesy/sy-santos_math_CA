@@ -14,9 +14,21 @@
 
   const $ = (id) => document.getElementById(id);
   // Bar-by-bar chord chart (sipra-chart.js).
-  const chartView = window.SipraChart && $("chartCard") ? window.SipraChart.mount($("chartCard")) : null;
+  const chartView = window.SipraChart && $("chartCard") ? window.SipraChart.mount($("chartCard"), { onPick: (chord, label) => pinChord(chord, label) }) : null;
   // The chord on a piano or guitar (sipra-chordviz.js).
-  const chordViz = window.SipraChordViz && $("chordViz") ? window.SipraChordViz.mount($("chordViz")) : null;
+  const chordViz = window.SipraChordViz && $("chordViz") ? window.SipraChordViz.mount($("chordViz"), { onUnpin: () => { if (chartView) chartView.unpick(); } }) : null;
+  const QUALITY_TONES = Object.fromEntries((window.SipraEngine.QUALITIES || []).map((q) => [q.id, q.tones.map(([iv]) => iv)]));
+  // Show a past chord on the piano / guitar (until "Back to live").
+  function pinChord(chord, label) {
+    if (!chordViz || !chord) return;
+    chordViz.pin({ ...chord, tones: chord.tones || QUALITY_TONES[chord.quality] || [0, 4, 7] }, label);
+    const box = $("chordViz").getBoundingClientRect();
+    if (box.bottom < 0 || box.top > window.innerHeight) $("chordViz").scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  if ($("chordLine")) $("chordLine").addEventListener("click", (e) => {
+    const li = e.target.closest && e.target.closest("li[data-root]");
+    if (li) pinChord({ root: Number(li.dataset.root), quality: li.dataset.q, name: li.dataset.name }, "recent");
+  });
   // Synced lyrics (sipra-lyrics.js), following the Spotify tab's song and time.
   if (window.SipraLyrics && $("lyricsCard")) {
     window.SipraLyrics.mount($("lyricsCard"), {
@@ -33,7 +45,14 @@
   const FIX_KEY = "sipra-tempo-fix";
   const readFixes = () => { try { return JSON.parse(localStorage.getItem(FIX_KEY) || "{}"); } catch (e) { return {}; } };
   function songKey() { return state.np && state.np.title ? state.np.title + " — " + (state.np.artist || "") : null; }
+  // Beat editor: tap along to set the tempo (sipra-taptempo.js).
+  const tapTempo = window.SipraTapTempo ? window.SipraTapTempo.attach({
+    tap: document.querySelector("[data-tap-tempo]"), auto: document.querySelector("[data-tap-auto]"), note: $("bpmAlt"),
+    getEngine: () => state.engine, getSongKey: () => songKey(),
+    onChange: () => { state.result = null; state.chordKey = ""; if (chartView) chartView.clear(); renderResult(); }
+  }) : null;
   function restoreFix() {
+    if (tapTempo) tapTempo.restore();
     const k = songKey(), s = k ? readFixes()[k] : null;
     if (state.engine && s && state.engine.tempoScale !== s) state.engine.setTempoScale(s);
   }
@@ -343,6 +362,7 @@
     state.result = r;
     renderResult();
     if (chartView) chartView.update(r, { title: state.np && state.np.title, artist: state.np && state.np.artist, joinedAt: state.joinedAt });
+    if (state.engine) renderChord(state.engine.chordInfo()); // current even when the panel is in the background
     setStatus("Live", "live");
     publishLive();
   }, UPDATE_MS);
@@ -360,7 +380,8 @@
     document.querySelectorAll("[data-tempo-fix]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.tempoFix) === scale)));
     el.bpm.textContent = r.bpm % 1 ? r.bpm.toFixed(1) : String(r.bpm);
     el.bpmMath.textContent = `${r.compound ? "♩. " : ""}T = 60/${Math.round(r.bpm)} = ${(60 / r.bpm).toFixed(3)}s`;
-    el.bpmAlt.textContent = scale !== 1 ? `heard ${Math.round(r.autoBpm)} → ${scale === 0.5 ? "½" : "2"}×` : "sounds off? fix it:";
+    el.bpmAlt.textContent = r.manualBpm ? `tapped ${Math.round(r.manualBpm)} BPM` : scale !== 1 ? `heard ${Math.round(r.autoBpm)} → ${scale === 0.5 ? "½" : "2"}×` : "sounds off? fix it:";
+    if (tapTempo) tapTempo.render();
     el.bpmConf.style.width = `${Math.round(r.bpmConfidence * 100)}%`;
     // After a key change, show the key we're in now.
     const k = r.keyNow || r.key;
@@ -406,6 +427,8 @@
       const li = document.createElement("li");
       if (i === hist.length - 1 && c && h.name === c.name.split("/")[0]) li.className = "now";
       li.textContent = h.name;
+      li.dataset.root = String(h.root); li.dataset.q = h.quality; li.dataset.name = h.name;
+      li.title = "Tap to see it on the piano / guitar";
       const span = document.createElement("span");
       span.textContent = h.roman || "";
       li.append(span);

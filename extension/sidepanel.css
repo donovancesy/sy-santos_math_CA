@@ -237,3 +237,20 @@ canvas { display: block; width: 100%; height: 120px; border-radius: 8px; backgro
 }
 .tempo-fix button:hover { border-color: var(--text); }
 .tempo-fix button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+.chord-line li[data-root] { cursor: pointer; }
+.chord-line li[data-root]:hover { outline: 1px solid var(--line-strong); }
+
+/* Chord math line keeps two lines of room so chord changes don't move the panel. */
+.chord-math { min-height: 3.1em; }
+
+/* Fixed two-line slots for text that changes with every chord or update, so
+   the panel never shifts while listening. */
+.chord-math, .tile code {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  overflow: hidden; line-height: 1.45; height: 2.9em; min-height: 0;
+}
+.chord-name, .chord-side code { white-space: nowrap; }
+/* The recent-chords row keeps its height before the first chord arrives. */
+.chord-line { min-height: 42px; }
+.chord-line { min-height: 0; height: 44px; }

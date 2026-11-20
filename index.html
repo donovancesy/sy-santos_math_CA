@@ -14,6 +14,7 @@
     })();
   </script>
   <meta name="description" content="Play a song on Spotify and see the math behind it live: tempo, key, chords and a bar-by-bar chord chart, with lessons on periodicity, equal temperament, ratios, Fourier analysis and statistics.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%231DB954'/><g transform='translate(2.6 2.6) scale(.78)' color='%23000'><path d='M16.4 6.2c-.9-1.7-2.8-2.6-4.8-2.3-2.4.4-3.9 2.3-3.4 4.3.5 2 2.7 2.8 4.6 3.6 1.9.8 3.6 2 3.2 4.1-.3 1.7-1.6 2.8-3.3 3.1' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/><ellipse cx='10.4' cy='19.2' rx='3' ry='2.15' transform='rotate(-22 10.4 19.2)' fill='%23000'/><path d='M16.4 6.2c.9-.6 1.7-1.6 1.9-2.9' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/></g></svg>">
   <title>Sipra · The math behind music</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,10 +35,7 @@
     <div class="wrap nav">
       <a class="brand" href="#top" aria-label="Sipra, back to top">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-            <path d="M2.5 12h2.2l2.1-5.7 3 11.4 2.6-8.2 1.9 5.1 1.7-2.6h5.5"/>
-            <circle cx="18.5" cy="7.1" r="1.1" fill="currentColor" stroke="none"/>
-          </svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 6.2c-.9-1.7-2.8-2.6-4.8-2.3-2.4.4-3.9 2.3-3.4 4.3.5 2 2.7 2.8 4.6 3.6 1.9.8 3.6 2 3.2 4.1-.3 1.7-1.6 2.8-3.3 3.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><ellipse cx="10.4" cy="19.2" rx="3" ry="2.15" transform="rotate(-22 10.4 19.2)" fill="currentColor"/><path d="M16.4 6.2c.9-.6 1.7-1.6 1.9-2.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </span>
         <span class="brand-text">
           <span class="brand-title">Sipra</span>
@@ -48,7 +46,6 @@
         <a href="#live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>Live</a>
         <a href="#math"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h6M8 4v6M14 6l5 5M19 6l-5 5M5 17h6M14 15h5M14 19h5"/></svg>The math</a>
         <a href="#session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>Stats</a>
-        <a href="math.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>Math map</a>
       </nav>
       <a class="btn btn-quiet concept-trigger" href="math.html" title="Math map: labs and lessons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span>Math map</span></a>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" aria-pressed="false" title="Light / dark">
@@ -166,6 +163,8 @@
             <div class="tempo-fix" role="group" aria-label="Fix the tempo">
               <button type="button" data-tempo-fix="0.5" title="Halve the tempo (Sipra counted eighth notes)">½×</button>
               <button type="button" data-tempo-fix="2" title="Double the tempo (Sipra counted half notes)">2×</button>
+              <button type="button" data-tap-tempo title="Tap along with the beat, 4 taps or more">Tap</button>
+              <button type="button" data-tap-auto hidden title="Go back to Sipra's own tempo">Auto</button>
               <span class="tempo-fix-note" id="liveTempoFix"></span>
             </div>
             <div class="conf"><i id="liveBpmConf"></i></div>
@@ -337,10 +336,7 @@
       <div class="footer-brand">
         <a class="brand" href="#top" aria-label="Sipra, back to top">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-            <path d="M2.5 12h2.2l2.1-5.7 3 11.4 2.6-8.2 1.9 5.1 1.7-2.6h5.5"/>
-            <circle cx="18.5" cy="7.1" r="1.1" fill="currentColor" stroke="none"/>
-          </svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 6.2c-.9-1.7-2.8-2.6-4.8-2.3-2.4.4-3.9 2.3-3.4 4.3.5 2 2.7 2.8 4.6 3.6 1.9.8 3.6 2 3.2 4.1-.3 1.7-1.6 2.8-3.3 3.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><ellipse cx="10.4" cy="19.2" rx="3" ry="2.15" transform="rotate(-22 10.4 19.2)" fill="currentColor"/><path d="M16.4 6.2c.9-.6 1.7-1.6 1.9-2.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </span>
         <span class="brand-text">
           <span class="brand-title">Sipra</span>
@@ -387,6 +383,7 @@
   <script src="js/sipra-chart.js"></script>
   <script src="js/sipra-chordviz.js"></script>
   <script src="js/sipra-lyrics.js"></script>
+  <script src="js/sipra-taptempo.js"></script>
   <script src="js/learn.js"></script>
   <script src="js/spotify-link.js"></script>
   <script src="js/live.js"></script>

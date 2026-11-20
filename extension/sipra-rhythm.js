@@ -85,6 +85,7 @@
       this.meterVotes = new Map();
       this.meterUpdates = 0;
       this.oomLock = false;
+      this.forcedBpm = null; // tapped tempo (per song)
       this.twoFourAmbiguous = false;
       this.ambVotes = 0;
       this.feelVotes = new Map();
@@ -362,6 +363,14 @@
       const tp = this.tempoPeriod(mix);
       if (!tp) return { ready: false, seconds };
 
+      // A tempo tapped in by the listener overrides the tempo search; the tracker
+      // still works out where the beats fall.
+      const forced = this.forcedBpm ? (fps * 60) / this.forcedBpm : null;
+      let beats;
+      if (forced) {
+        this.period = forced; this.pending = null; this.pendingCount = 0;
+        beats = this.trackBeats(o, this.period);
+      } else {
       // Octave check: if hits halfway between the tracked beats are as strong as
       // the beats themselves, the real beat is twice as fast (waltzes, swing jazz).
       let cand = tp.period;
@@ -388,7 +397,7 @@
         }
       }
 
-      let beats = this.trackBeats(o, this.period);
+      beats = this.trackBeats(o, this.period);
       // Oom-pah check: at a fast pulse, bass on every other beat with a chord (not a
       // snare) in between means we're counting the eighth notes of a slower 2/4.
       const oom = this.oomPah(beats, low, prepare(this.high), (fps * 60) / this.period);
@@ -405,6 +414,7 @@
         this.pending = null; this.pendingCount = 0;
         beats = this.trackBeats(o, this.period);
       }
+      } // end of the automatic tempo search
       // Phase check: bass and kick land on the beat in nearly all music. If the low
       // end is clearly stronger halfway between our beats (oom-pah, ska, marches),
       // we've locked onto the off-beat, so shift by half a beat.

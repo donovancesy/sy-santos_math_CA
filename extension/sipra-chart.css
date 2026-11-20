@@ -41,3 +41,31 @@
 }
 .sc-joined { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; border: 1px dashed var(--line-strong); font-size: 12px; color: var(--muted); }
 .sc-joined[hidden] { display: none; }
+/* Chords are buttons: tap one to see it on the piano / guitar. */
+button.sc-c { font: inherit; font-size: 14px; font-weight: 900; color: inherit; background: none; border: 0; border-radius: 6px; padding: 0 2px; cursor: pointer; }
+button.sc-c:hover { background: rgba(127, 127, 127, .16); }
+button.sc-c.picked { background: #8e7cff; color: #fff; }
+.sc-bar.now button.sc-c { color: var(--on-accent, #000); }
+.sc-bar.now button.sc-c.picked { color: #fff; }
+@media (max-width: 460px) { button.sc-c { font-size: 12.5px; } }
+
+/* Steady size: the chart grows inside its own box, so nothing below it moves
+   as bars are added. It appears once (when the first bar is written). */
+.sc-bars { height: 232px; max-height: none; overscroll-behavior: contain; }
+.sc-bars:empty { display: none; }
+.sc-meta { min-height: 2.9em; }
+.sc-loop b { white-space: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+.sc-loop small { white-space: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+.sc-loop { flex-wrap: nowrap; overflow: hidden; }
+@media (max-width: 460px) { .sc-bars { height: 204px; } }
+.sc-loop-waiting { border-style: dashed; border-color: var(--line-strong); }
+.sc-loop-waiting b { font-size: 13px; font-weight: 600; color: var(--muted); }
+/* The loop line keeps one height whether or not a loop is showing. */
+.sc-loop { min-height: 40px; box-sizing: border-box; align-items: center; }
+/* The bar box shows from the start (empty until the first bar), and the info
+   line is a fixed two lines, so nothing below moves. */
+.sc-bars:empty { display: grid; place-items: center; border: 1px dashed var(--line-strong); border-radius: 10px; }
+.sc-bars:empty::before { content: "♩ ♩ ♩ ♩"; color: var(--faint); letter-spacing: .4em; font-size: 14px; }
+.sc-meta { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; height: 2.9em; min-height: 0; line-height: 1.45; }
+/* Exact height for the loop line, whatever it holds. */
+.sc-loop { height: 42px; min-height: 0; padding-block: 0; }

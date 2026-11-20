@@ -2,10 +2,10 @@
 
 Sipra sits next to **Spotify Web Player** and shows the math of the song that's playing, live:
 
-- **Chord:** the chord right now (e.g. Am), its role in the key (vi), its notes and frequency ratio, the last few chords, and the chord drawn on a **piano** or **guitar** (open chords and barre shapes). It always matches the chart: both come from the same transcription
+- **Chord:** the chord right now (e.g. Am), its role in the key (vi), its notes and frequency ratio, the last few chords, and the chord drawn on a **piano** or **guitar** (open chords and barre shapes); tap a past chord in the chart or the recent row to see it drawn. It always matches the chart: both come from the same transcription
 - **Chart:** the whole song's chords bar by bar (`| Am | F | C | G |`), the loop that repeats (vi – IV – I – V), names or Roman numerals, and a **Copy** button for the text chart. If you start listening partway through, it says where it joined; play the song again from the top and the chart starts over
-- **Lyrics:** switch on to follow the words as the song plays, with the current line and word highlighted. They come from [LRCLIB](https://lrclib.net), which Sipra sends only the song's name, artist and length
-- **Tempo:** BPM and beat length `T = 60 / BPM`, plus whether it's steady or speeding up / slowing down. If it's double or half what you hear (jazz ballads often fool it), tap **½×** or **2×**; Sipra remembers that for the song
+- **Lyrics:** switch on to follow the words as the song plays, with the current line and word highlighted. They come from [LRCLIB](https://lrclib.net), which Sipra sends only the song's name, artist and length. Early or late? Nudge them with **− / +**
+- **Tempo:** BPM and beat length `T = 60 / BPM`, plus whether it's steady or speeding up / slowing down. If it's double or half what you hear (jazz ballads often fool it), tap **½×** or **2×**, or tap **Tap** along with the beat (4+ taps) to set it yourself; Sipra remembers that for the song, and **Auto** goes back
 - **Key:** home note and mode, with `f = 440 · 2^(n/12)`; shows a key change mid-song, and the song's tuning if it isn't A4 = 440 Hz
 - **Meter:** 3/4 or 4/4, with dots that light on each beat
 - **Beats:** beat number through the song, `N = D · BPM / 60`

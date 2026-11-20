@@ -20,8 +20,18 @@
     for (const raw of String(text || "").split(/\r?\n/)) {
       const stamps = [...raw.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)];
       if (!stamps.length) continue;
-      const words = raw.replace(/\[[^\]]*\]/g, "").trim();
-      for (const m of stamps) lines.push({ t: Number(m[1]) * 60 + Number(m[2]), text: words });
+      const body = raw.replace(/\[[^\]]*\]/g, "").trim();
+      // Enhanced LRC: "<00:12.34> word <00:12.80> word" gives each word its own time.
+      const wordTimes = [];
+      const tagged = [...body.matchAll(/<(\d+):(\d+(?:\.\d+)?)>\s*([^<]*)/g)];
+      if (tagged.length) {
+        for (const w of tagged) {
+          const t = Number(w[1]) * 60 + Number(w[2]);
+          for (const word of w[3].trim().split(/\s+/).filter(Boolean)) wordTimes.push(t);
+        }
+      }
+      const words = body.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+      for (const m of stamps) lines.push({ t: Number(m[1]) * 60 + Number(m[2]), text: words, words: wordTimes.length ? wordTimes : null });
     }
     return lines.sort((a, b) => a.t - b.t);
   }
@@ -72,14 +82,46 @@
     root.innerHTML = `
       <div class="ly-head">
         <span class="ly-title">Lyrics</span>
+        <span class="ly-sync" hidden title="Lyrics early or late? Nudge them (saved for this song)">
+          <button type="button" data-ly="-1" aria-label="Lyrics half a second earlier">−</button>
+          <span class="ly-offset">0.0 s</span>
+          <button type="button" data-ly="1" aria-label="Lyrics half a second later">+</button>
+        </span>
         <button type="button" class="ly-toggle" role="switch" aria-checked="false">Off</button>
       </div>
       <div class="ly-body" aria-live="off"></div>
       <p class="ly-note"></p>`;
     const body = root.querySelector(".ly-body"), note = root.querySelector(".ly-note"), toggle = root.querySelector(".ly-toggle");
     let trackKey = "", data = null, lineEls = [], activeLine = -1, activeWord = -1, stick = true, loading = false;
+    // Timing nudge, in seconds, saved per song: + shows the words later, − earlier.
+    const syncEl = root.querySelector(".ly-sync"), offsetEl = root.querySelector(".ly-offset");
+    const OFFSETS = "sipra-lyrics-offset";
+    const readOffsets = () => { try { return JSON.parse(localStorage.getItem(OFFSETS) || "{}"); } catch (e) { return {}; } };
+    let offset = 0;
+    function showOffset() { offsetEl.textContent = `${offset > 0 ? "+" : ""}${offset.toFixed(1)} s`; }
+    root.querySelectorAll("[data-ly]").forEach((b) => b.addEventListener("click", () => {
+      offset = Math.round((offset + Number(b.dataset.ly) * 0.5) * 10) / 10;
+      offset = Math.max(-10, Math.min(10, offset));
+      const all = readOffsets();
+      if (offset) all[trackKey] = offset; else delete all[trackKey];
+      try { localStorage.setItem(OFFSETS, JSON.stringify(all)); } catch (e) {}
+      showOffset(); activeLine = -2;
+    }));
 
-    body.addEventListener("scroll", () => { stick = false; clearTimeout(body._t); body._t = setTimeout(() => { stick = true; }, 4000); }, { passive: true });
+    // Only the listener's own scrolling (wheel, touch, scrollbar drag) pauses
+    // follow-along for a few seconds; Sipra's own scrolling doesn't.
+    const pauseFollow = () => { stick = false; clearTimeout(body._t); body._t = setTimeout(() => { stick = true; centerLine(activeLine); }, 4000); };
+    ["wheel", "touchstart", "pointerdown", "keydown"].forEach((ev) => body.addEventListener(ev, pauseFollow, { passive: true }));
+    // Scroll only inside the lyrics box, keeping the current line in its middle
+    // (measured against the box itself, never the page).
+    function centerLine(i) {
+      const line = lineEls[i];
+      if (!line || !stick) return;
+      const box = body.getBoundingClientRect(), r = line.getBoundingClientRect();
+      const target = body.scrollTop + (r.top - box.top) - (body.clientHeight - r.height) / 2;
+      // Glide when you're watching; jump when the tab is in the background.
+      body.scrollTo({ top: Math.max(0, target), behavior: document.hidden ? "auto" : "smooth" });
+    }
 
     function setNote(text) { note.textContent = text; }
     function renderToggle() {
@@ -119,7 +161,10 @@
       else if (got.instrumental) setNote("Instrumental: no lyrics.");
       else if (got.none) setNote("No lyrics found for this song.");
       else if (got.plain) setNote("These lyrics aren't timed, so they can't follow the song. Lyrics: LRCLIB.");
-      else setNote("Lyrics: LRCLIB · the highlighted word is estimated within each line.");
+      else setNote(got.lines.some((l) => l.words)
+        ? "Lyrics: LRCLIB, timed word by word · early or late? use − / +"
+        : "Lyrics: LRCLIB · lines are timed, the highlighted word is estimated · early or late? use − / +");
+      syncEl.hidden = !got.lines;
     }
 
     function tick() {
@@ -131,9 +176,14 @@
         return;
       }
       const key = `${t.title}|${t.artist}`;
-      if (key !== trackKey) { trackKey = key; load(t); return; }
+      if (key !== trackKey) {
+        trackKey = key; syncEl.hidden = true;
+        offset = Number(readOffsets()[key]) || 0; showOffset();
+        load(t); return;
+      }
       if (loading || !data || !data.lines || !lineEls.length || !Number.isFinite(t.position)) return;
-      const pos = t.position, L = data.lines;
+      // A + nudge means the lyrics run late, so they're shown as of a moment earlier.
+      const pos = t.position - offset, L = data.lines;
       let i = -1;
       for (let k = 0; k < L.length; k += 1) { if (L[k].t <= pos + 0.15) i = k; else break; }
       if (i !== activeLine) {
@@ -142,14 +192,23 @@
         activeLine = i; activeWord = -1;
         if (lineEls[i]) {
           lineEls[i].classList.add("now");
-          if (stick) body.scrollTo({ top: lineEls[i].offsetTop - body.clientHeight / 2 + lineEls[i].offsetHeight / 2, behavior: "smooth" });
+          // After the line restyles (it grows a little), center it.
+          setTimeout(() => centerLine(i), 0);
         }
         lineEls.forEach((el, k) => el.classList.toggle("past", k < i));
       }
       // Word: spread the line's time over its words by length.
       if (i >= 0 && lineEls[i]) {
         const words = [...lineEls[i].children];
-        if (words.length) {
+        if (words.length && L[i].words && L[i].words.length === words.length) {
+          // Word-by-word times from the lyrics themselves.
+          let w = 0;
+          for (let k = 0; k < words.length; k += 1) if (L[i].words[k] <= pos + 0.05) w = k;
+          if (w !== activeWord) {
+            words.forEach((el, k) => { el.classList.toggle("now", k === w); el.classList.toggle("past", k < w); });
+            activeWord = w;
+          }
+        } else if (words.length) {
           const start = L[i].t, end = i + 1 < L.length ? Math.min(L[i + 1].t, start + 8) : start + 5;
           const frac = Math.max(0, Math.min(0.999, (pos - start) / Math.max(0.5, (end - start) * 0.92)));
           const lens = words.map((w) => w.textContent.length + 1), total = lens.reduce((a, b) => a + b, 0);

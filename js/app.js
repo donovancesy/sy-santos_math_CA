@@ -1272,6 +1272,7 @@ function tc(key, alpha) {
           edited: Boolean(meta.edited)
         };
         state.track = track;
+        if (!Number.isFinite(track.bpm) || track.bpm <= 0) track.bpm = 96;
         state.bpm = track.bpm;
         state.rootMidi = track.rootMidi;
         state.peaks = computeWavePeaks(buffer);
@@ -1437,7 +1438,7 @@ function tc(key, alpha) {
           });
           if (!state.track) return;
           const track = state.track;
-          const bpm = clamp(analysis.bpm, 30, 300);
+          const bpm = Number.isFinite(analysis.bpm) && analysis.bpm > 0 ? clamp(analysis.bpm, 30, 300) : 96;
           state.bpm = bpm;
           track.bpm = bpm;
           track.key = analysis.key;
@@ -1648,7 +1649,7 @@ function tc(key, alpha) {
         if (el.metricBeats && state.buffer) {
           el.metricBeats.textContent = ((state.buffer.duration * state.bpm) / 60).toFixed(1);
         }
-        if (el.polyTempoLabel) el.polyTempoLabel.textContent = `Tempo-locked · ${formatBpm(state.bpm)} BPM`;
+        if (el.polyTempoLabel) el.polyTempoLabel.textContent = `Tempo-locked · ${formatBpm(labBpm())} BPM`;
       }
 
       function fitCanvas(canvas) {
@@ -2610,8 +2611,9 @@ function tc(key, alpha) {
       }
 
       function polySteps() { return poly.mode === "meter" ? poly.meterN : poly.mode === "groove" ? GROOVES[poly.groove].steps : lcm(poly.x, poly.y); }
+      function labBpm() { return Number.isFinite(state.bpm) && state.bpm > 0 ? state.bpm : 96; }
       function polyCycleDuration() {
-        const beat = 60 / state.bpm; // BPM counts quarter notes
+        const beat = 60 / labBpm(); // BPM counts quarter notes
         if (poly.mode === "groove") return GROOVES[poly.groove].beats * beat;
         return poly.mode === "meter" ? poly.meterN * (4 / poly.meterD) * beat : beat * 4;
       }
@@ -2676,21 +2678,41 @@ function tc(key, alpha) {
           if (legend) legend.innerHTML = '<span class="legend-item"><i class="legend-swatch"></i>hit</span><span class="legend-item"><i class="legend-swatch soft"></i>ghost note</span><span class="legend-item"><i class="legend-swatch outline"></i>now</span>';
           if (el.lcmValue) el.lcmValue.textContent = String(g.steps);
           if (el.lcmCaption) el.lcmCaption.textContent = `${g.name} · ${g.sig}`;
-          if (el.polyCycleTime) el.polyCycleTime.textContent = `Bar = ${g.beats} × 60/${formatBpm(state.bpm)} = ${cycleDuration.toFixed(3)} s`;
+          if (el.polyCycleTime) el.polyCycleTime.textContent = `Bar = ${g.beats} × 60/${formatBpm(labBpm())} = ${cycleDuration.toFixed(3)} s`;
           if (el.polyStepTime) el.polyStepTime.textContent = `Step = bar / ${g.steps} = ${stepDuration.toFixed(3)} s${g.swing ? ` · swing +${Math.round(g.swing * 100)}%` : ""}`;
           if (el.seqTitle) el.seqTitle.innerHTML = `<strong>${g.name}</strong> · ${g.blurb}`;
           if (el.seqCaption) el.seqCaption.textContent = "";
           const gm = $("#grooveMath");
-          if (gm) gm.innerHTML = g.math.map((m) => `<li>${m}</li>`).join("");
+          const density = g.rows.map((r) => { const k = [...r.p].filter((c) => c !== ".").length; return `${r.label} ${k}/${g.steps}`; }).join(" · ");
+          if (gm) gm.innerHTML = [...g.math, `How busy each part is (hits ÷ steps): ${density}`].map((m) => `<li>${m}</li>`).join("");
           $$("[data-groove]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.groove === poly.groove)));
         } else if (meter) {
           const sig = `${poly.meterN}/${poly.meterD}`, unit = poly.meterD === 4 ? "quarter" : poly.meterD === 8 ? "eighth" : poly.meterD === 2 ? "half" : "sixteenth";
           if (el.lcmValue) el.lcmValue.textContent = String(poly.meterN);
           if (el.lcmCaption) el.lcmCaption.textContent = `${sig} = ${poly.groups.join(" + ")}`;
-          if (el.polyCycleTime) el.polyCycleTime.textContent = `Bar = ${poly.meterN} × (4/${poly.meterD}) × 60/${formatBpm(state.bpm)} = ${cycleDuration.toFixed(3)} s`;
+          if (el.polyCycleTime) el.polyCycleTime.textContent = `Bar = ${poly.meterN} × (4/${poly.meterD}) × 60/${formatBpm(labBpm())} = ${cycleDuration.toFixed(3)} s`;
           if (el.polyStepTime) el.polyStepTime.textContent = `One ${unit} note = ${stepDuration.toFixed(3)} s`;
           if (el.seqTitle) el.seqTitle.innerHTML = `<strong>${sig}</strong> · ${poly.meterN} ${unit} notes, grouped ${poly.groups.join("+")}`;
           if (el.seqCaption) el.seqCaption.textContent = "Tap a step: off → hit → accent.";
+          const mm = $("#meterMath");
+          if (mm) {
+            const n = poly.meterN, d = poly.meterD, beat = 60 / labBpm(), stepS = (4 / d) * beat;
+            const compound = (d === 8 || d === 16) && n % 3 === 0 && n > 3;
+            const starts = []; let acc = 0; poly.groups.forEach((g) => { starts.push(acc + 1); acc += g; });
+            const lines = [
+              `One ${d === 4 ? "quarter" : d === 8 ? "eighth" : d === 2 ? "half" : "sixteenth"} note = (4 / ${d}) × 60 / ${formatBpm(labBpm())} = ${stepS.toFixed(3)} s, so a bar = ${n} × ${stepS.toFixed(3)} = ${(n * stepS).toFixed(3)} s`,
+              poly.groups.length > 1
+                ? `Grouping: ${n} = ${poly.groups.join(" + ")}, ${n} written as a sum of 2s and 3s`
+                : `One group of ${n}: the accent is on beat 1, the other beats are even`,
+              `Accents fall on the running totals: steps ${starts.join(", ")}`,
+              compound
+                ? `Compound time: ${n} eighths in ${n / 3} groups of 3, so you feel ${n / 3} big beats (dotted quarters), each = 3 × ${stepS.toFixed(3)} = ${(3 * stepS).toFixed(3)} s`
+                : poly.groups.length > 1 && poly.groups.some((g) => g !== poly.groups[0])
+                  ? `Uneven (additive) meter: the groups aren't all the same length, which gives ${n}/${d} its limp`
+                  : `Simple time: every beat splits in two, ${n} beats of ${(stepS).toFixed(3)} s`
+            ];
+            mm.innerHTML = lines.map((l) => `<li>${l}</li>`).join("");
+          }
           $$("[data-meter]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.meter === sig)));
           const num = $("#meterNum"), den = $("#meterDen");
           if (num && document.activeElement !== num) num.value = String(poly.meterN);
@@ -2710,7 +2732,7 @@ function tc(key, alpha) {
           if (b && document.activeElement !== b) b.value = String(poly.y);
         }
         if (el.seqStepReadout) el.seqStepReadout.textContent = `step — / ${steps}`;
-        if (el.polyTempoLabel) el.polyTempoLabel.textContent = `Tempo-locked · ${formatBpm(state.bpm)} BPM`;
+        if (el.polyTempoLabel) el.polyTempoLabel.textContent = `Tempo-locked · ${formatBpm(labBpm())} BPM`;
         renderPolyGrid(steps);
       }
 

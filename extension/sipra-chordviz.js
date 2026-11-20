@@ -119,27 +119,42 @@
     try { mode = localStorage.getItem("sipra-viz") === "guitar" ? "guitar" : "piano"; } catch (e) {}
     root.classList.add("cv");
     root.innerHTML = `
-      <div class="cv-tabs" role="tablist" aria-label="Show chords on">
-        <button type="button" role="tab" data-cv="piano">Piano</button>
-        <button type="button" role="tab" data-cv="guitar">Guitar</button>
+      <div class="cv-top">
+        <p class="cv-pinned" hidden><span></span><button type="button" class="cv-live">Back to live</button></p>
+        <div class="cv-tabs" role="tablist" aria-label="Show chords on">
+          <button type="button" role="tab" data-cv="piano">Piano</button>
+          <button type="button" role="tab" data-cv="guitar">Guitar</button>
+        </div>
       </div>
       <div class="cv-stage" aria-live="off"></div>`;
-    const stage = root.querySelector(".cv-stage");
-    let current = null, sig = "";
+    const stage = root.querySelector(".cv-stage"), pinnedEl = root.querySelector(".cv-pinned");
+    // `current` follows the song; `pinned` is a past chord the listener tapped.
+    let current = null, pinned = null, sig = "";
     function paint() {
       root.querySelectorAll("[data-cv]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.cv === mode)));
-      const s = mode + (current ? `${current.root}|${current.quality}|${current.bass}` : "none");
+      const shown = pinned || current;
+      pinnedEl.hidden = !pinned;
+      root.classList.toggle("cv-is-pinned", Boolean(pinned));
+      if (pinned) pinnedEl.querySelector("span").textContent = `${pinned.name}${pinned.label ? " · " + pinned.label : ""}`;
+      const s = mode + (pinned ? "P" : "") + (shown ? `${shown.root}|${shown.quality}|${shown.bass}` : "none");
       if (s === sig) return;
       sig = s;
-      stage.innerHTML = mode === "guitar" ? guitarSVG(current) : pianoSVG(current);
+      stage.innerHTML = mode === "guitar" ? guitarSVG(shown) : pianoSVG(shown);
     }
     root.querySelectorAll("[data-cv]").forEach((b) => b.addEventListener("click", () => {
       mode = b.dataset.cv;
       try { localStorage.setItem("sipra-viz", mode); } catch (e) {}
       paint();
     }));
+    root.querySelector(".cv-live").addEventListener("click", () => { pinned = null; paint(); if (options.onUnpin) options.onUnpin(); });
     paint();
-    return { show(chord) { current = chord && Number.isInteger(chord.root) ? chord : null; paint(); } };
+    return {
+      show(chord) { current = chord && Number.isInteger(chord.root) ? chord : null; paint(); },
+      /** Show a past chord (from the chart or the recent row) until "Back to live". */
+      pin(chord, label) { pinned = chord && Number.isInteger(chord.root) ? { ...chord, label } : null; paint(); },
+      unpin() { pinned = null; paint(); },
+      get pinned() { return pinned; }
+    };
   }
 
   global.SipraChordViz = { mount, guitarShape, shapeNotes, E_SHAPE, A_SHAPE, OPEN };

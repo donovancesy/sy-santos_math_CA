@@ -1517,3 +1517,24 @@ body.map-open { overflow: hidden; }
 .poly-row.groove-row .poly-cell.is-hit { background: var(--accent); border-color: var(--accent); }
 .poly-row.groove-row .poly-cell.is-ghost { background: rgba(var(--c-acc), 0.32); border-color: rgba(var(--c-acc), 0.5); }
 .poly-row.groove-row .poly-cell.beat-start { box-shadow: inset 2px 0 0 var(--line-strong); }
+
+.chord-line li[data-root] { cursor: pointer; }
+.chord-line li[data-root]:hover { outline: 1px solid var(--line-strong); }
+
+/* Chord math line keeps two lines of room so chord changes don't move the page. */
+.chord-math { min-height: 2.9em; }
+
+/* Fixed two-line slots for text that changes with every chord or update, so
+   the cards keep their size and the page never shifts while listening. */
+.chord-math, .live-tile .live-math {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  overflow: hidden; line-height: 1.45; height: 2.9em; min-height: 0;
+}
+.chord-side code, .chord-name { white-space: nowrap; }
+.tempo-fix { flex-wrap: nowrap; }
+.tempo-fix-note { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-hint { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; height: 3em; line-height: 1.5; }
+.live-big { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The recent-chords row keeps its height before the first chord arrives. */
+.chord-line { min-height: 46px; }
+.chord-line { min-height: 0; height: 48px; }
